@@ -1,5 +1,466 @@
 openapi: 3.0.3
 info:
   title: Edge Cache Lab API
-  version: 0.0.0
-paths: {}
+  description: Demo e-commerce API demonstrating CDN and Varnish caching behavior
+  version: 0.1.0
+  contact:
+    name: Edge Cache Lab
+    
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check endpoint
+      tags:
+        - system
+      responses:
+        '200':
+          description: Service is healthy
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique request identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /:
+    get:
+      operationId: getHomepage
+      summary: Get homepage content
+      tags:
+        - public
+      responses:
+        '200':
+          description: Homepage content
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique request identifier
+            Cache-Control:
+              schema:
+                type: string
+              description: Cache directives
+            Surrogate-Control:
+              schema:
+                type: string
+              description: CDN/Varnish cache directives
+            ETag:
+              schema:
+                type: string
+              description: Entity tag for cache validation
+            X-Cache:
+              schema:
+                type: string
+              description: Cache status (HIT/MISS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Homepage'
+
+  /category:
+    get:
+      operationId: listCategories
+      summary: List all product categories
+      tags:
+        - public
+      responses:
+        '200':
+          description: List of categories
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+            Surrogate-Control:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+            X-Cache:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+
+  /product/{id}:
+    get:
+      operationId: getProduct
+      summary: Get product details
+      tags:
+        - public
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product ID
+      responses:
+        '200':
+          description: Product details
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+            Surrogate-Control:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+            X-Cache:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /cart:
+    get:
+      operationId: getCart
+      summary: Get user cart (non-cacheable)
+      tags:
+        - private
+      responses:
+        '200':
+          description: User cart contents
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                example: "no-store, no-cache, must-revalidate"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+  /account:
+    get:
+      operationId: getAccount
+      summary: Get user account info (non-cacheable)
+      tags:
+        - private
+      responses:
+        '200':
+          description: User account information
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                example: "no-store, no-cache, must-revalidate"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+
+  /admin/product/{id}:
+    post:
+      operationId: updateProduct
+      summary: Update product (triggers cache purge)
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Product updated successfully
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+            X-Purge-Tags:
+              schema:
+                type: string
+              description: Cache tags to purge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+        - timestamp
+        - instance
+      properties:
+        status:
+          type: string
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-13T17:23:00Z"
+        instance:
+          type: string
+          example: "api-01"
+        requestId:
+          type: string
+          example: "req-abc123"
+
+    Homepage:
+      type: object
+      required:
+        - title
+        - featured
+        - meta
+      properties:
+        title:
+          type: string
+          example: "Edge Cache Lab Store"
+        featured:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    Category:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+      properties:
+        id:
+          type: string
+          example: "cat-001"
+        name:
+          type: string
+          example: "Electronics"
+        slug:
+          type: string
+          example: "electronics"
+        description:
+          type: string
+          example: "All electronic products"
+        productCount:
+          type: integer
+          example: 42
+
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - price
+        - inStock
+      properties:
+        id:
+          type: string
+          example: "prod-001"
+        name:
+          type: string
+          example: "Wireless Headphones"
+        slug:
+          type: string
+          example: "wireless-headphones"
+        description:
+          type: string
+          example: "High-quality wireless headphones with noise cancellation"
+        price:
+          type: number
+          format: float
+          example: 199.99
+        currency:
+          type: string
+          example: "USD"
+        inStock:
+          type: boolean
+          example: true
+        categoryId:
+          type: string
+          example: "cat-001"
+        imageUrl:
+          type: string
+          example: "https://example.com/images/prod-001.jpg"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["electronics", "audio", "wireless"]
+
+    Cart:
+      type: object
+      required:
+        - id
+        - items
+        - total
+        - meta
+      properties:
+        id:
+          type: string
+          example: "cart-abc123"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total:
+          type: number
+          format: float
+          example: 599.97
+        currency:
+          type: string
+          example: "USD"
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    CartItem:
+      type: object
+      required:
+        - productId
+        - quantity
+        - price
+      properties:
+        productId:
+          type: string
+          example: "prod-001"
+        productName:
+          type: string
+          example: "Wireless Headphones"
+        quantity:
+          type: integer
+          example: 3
+        price:
+          type: number
+          format: float
+          example: 199.99
+
+    Account:
+      type: object
+      required:
+        - id
+        - email
+        - meta
+      properties:
+        id:
+          type: string
+          example: "user-001"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+        inStock:
+          type: boolean
+
+    ResponseMeta:
+      type: object
+      required:
+        - timestamp
+        - instance
+        - requestId
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-13T17:23:00Z"
+        instance:
+          type: string
+          example: "api-01"
+        requestId:
+          type: string
+          example: "req-abc123"
+        headersReceived:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            User-Agent: "curl/7.68.0"
+            Accept: "*/*"
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+        - requestId
+      properties:
+        error:
+          type: string
+          example: "not_found"
+        message:
+          type: string
+          example: "Product not found"
+        requestId:
+          type: string
+          example: "req-abc123"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-13T17:23:00Z"

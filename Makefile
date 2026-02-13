@@ -1,8 +1,9 @@
 SHELL := /bin/bash
 # Use Make's shell() to evaluate `go env GOPATH` when the Makefile is read
 GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
+OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 
-.PHONY: help api-init api-install api-update api-run api-test docker-build docker-up docker-down docker-logs
+.PHONY: help api-init api-install api-update api-run api-test openapi openapi-validate docker-build docker-up docker-down docker-logs
 
 help:
 	@echo "Usage: make [target]"
@@ -14,6 +15,10 @@ help:
 	@echo "  api-test     - Run tests for the API"
 	@echo "  api-lint     - Run linters for the API"
 	@echo "  api-fmt      - Format the API code"
+	@echo ""
+	@echo "OpenAPI:"
+	@echo "  openapi          - Generate Go code from OpenAPI spec"
+	@echo "  openapi-validate - Validate OpenAPI spec"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-build - Build the Docker images"
@@ -47,6 +52,22 @@ api-lint:
 
 api-fmt:
 	@cd apps/api && $(GOLANGCI) fmt
+
+openapi:
+	@echo "Installing oapi-codegen if needed..."
+	@which $(OAPI_CODEGEN) > /dev/null || go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+	@echo "Generating Go code from OpenAPI spec..."
+	@mkdir -p apps/api/internal/api
+	@$(OAPI_CODEGEN) -generate types,chi-server \
+		-package api \
+		openapi/api.yaml > apps/api/internal/api/api.gen.go
+	@echo "✓ Generated apps/api/internal/api/api.gen.go"
+
+openapi-validate:
+	@echo "Validating OpenAPI spec..."
+	@$(OAPI_CODEGEN) -generate types \
+		-package api \
+		openapi/api.yaml > /dev/null 2>&1 && echo "✓ OpenAPI spec is valid" || (echo "✗ OpenAPI spec validation failed" && exit 1)
 
 docker-build:
 	@docker compose build
