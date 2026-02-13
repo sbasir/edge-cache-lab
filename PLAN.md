@@ -2,7 +2,7 @@
 
 > Goal: build a production-like, fully automated mini e-commerce platform that demonstrates CDN → Varnish → App → DB behavior, including CI/CD, observability, and safe operations.
 
-This project optimizes for **operability, repeatability, and debuggability**, not application complexity.
+This project optimizes for operability, repeatability, and debuggability, not application complexity.
 
 ## Final Target Architecture
 
@@ -39,28 +39,29 @@ Managed by:
 
 The API contract is the source of truth.
 
-Endpoints, request/response formats, and error models are defined in OpenAPI.
+Endpoints, request/response formats, headers, and error models are defined in OpenAPI.
 Both backend and frontend code are generated or validated against this spec.
 
 Breaking the contract must fail CI.
 
 ---
 
-# Phase 0 – Repository & Tooling Foundation
+# Phase 0 – Repository & Local Dev Loop
 
 ### Objective
 
-Create the skeleton and developer ergonomics.
+Create the skeleton and a fast local run loop.
 
 ### Deliverables
 
 * Repo structure
 * Makefile
-* basic CI pipeline stub
+* Docker Compose dev loop
 
 ### Suggested Structure
 
 ```
+/api                → OpenAPI spec
 /app                → demo store
 /infra              → Pulumi
 /k8s                → manifests / helm
@@ -69,22 +70,40 @@ Create the skeleton and developer ergonomics.
 Makefile
 ```
 
-### Make targets (example)
+### Make targets (initial)
 
 ```
+make up
+make down
 make build
 make test
-make deploy
-make destroy
-make port-forward
+make logs
 ```
 
-### CI (initial)
+### Definition of Done
 
-* lint
-* build containers
+* `make up` starts app locally
+* `make test` runs a basic smoke test
+* README shows the local curl commands
 
-No infra yet.
+---
+
+# Phase 0.5 – Walking Skeleton (Fast Path)
+
+### Objective
+
+Prove the request path end-to-end with one endpoint.
+
+### Tasks
+
+* implement a single endpoint (`GET /health`)
+* return request-id, instance name, and timestamp
+* add structured logs with request-id
+
+### Definition of Done
+
+* `curl /health` returns 200 with headers and body fields
+* log includes request-id and latency
 
 ---
 
@@ -131,15 +150,19 @@ Example:
 * Error
 * Health
 
-### Deliverables
+### Required headers in the contract
 
-* versioned spec in Git
-* reviewed like code
-* baseline for generation
+* `Cache-Control`
+* `Surrogate-Control`
+* `ETag`
+* `X-Request-Id`
+* `X-Cache` (from Varnish)
 
 ### Definition of Done
 
-If the spec changes → backend or frontend should fail build until regenerated.
+* OpenAPI validates in CI
+* Generated code matches spec with no git diff
+* Spec changes cause CI failure until regenerated
 
 ---
 
@@ -148,19 +171,18 @@ If the spec changes → backend or frontend should fail build until regenerated.
 ### Objective
 
 Simulate Magento-like caching behavior with minimal code.
-Implement API described in OpenAPI.
 
 ### Tasks
 
 * generate Go types/server interfaces
-* implement handlers
-* responses must match spec
+* implement handlers from the spec
+* responses must match spec and headers
 * compilation ensures alignment
 
 ### Important Rule
 
 Do not invent routes manually.
-If it’s not in the spec → it doesn’t exist.
+If it is not in the spec, it does not exist.
 
 ### Response behavior
 
@@ -170,38 +192,38 @@ Return:
 * instance name
 * headers received
 
-This helps you visually debug cache layers.
+This enables cache debugging.
 
-### Deliverables
+### Definition of Done
 
-* Dockerfile
-* health endpoint
-* simple tests
+* `make test` includes API contract tests
+* `GET /product/{id}` includes cache headers
+* `GET /cart` is explicitly non-cacheable
 
 ---
 
-# Phase 3 – Run App in Kubernetes (no Varnish yet)
+# Phase 3 – Run App in Kubernetes (No Varnish Yet)
 
 ### Objective
 
-Origin service works.
+Origin service works in k8s.
 
 ### Tasks
 
 * Deployment
-* Service
-* Ingress or ClusterIP
+* Service (ClusterIP)
 * scaling replicas
+* port-forward script or Make target
 
 ### Validate
 
-* curl works
-* multiple pods respond
+* `curl` works via port-forward
+* multiple pods respond with different instance names
 
-### Deliverables
+### Definition of Done
 
-* manifests or Helm
-* ability to redeploy
+* `make port-forward` works
+* `kubectl get pods` shows desired replicas
 
 ---
 
@@ -227,17 +249,16 @@ Add reverse proxy cache in front of the app.
 ### Validation tests
 
 ```
-curl → MISS
-curl again → HIT
+curl /product/1 → MISS
+curl /product/1 → HIT
+curl /cart → PASS
 ```
 
-Check headers.
+### Definition of Done
 
-### Deliverables
-
-* working HIT/MISS
-* ability to tweak TTL
-* VCL in Git
+* `X-Cache` headers show HIT/MISS
+* VCL is versioned in Git
+* TTL can be changed in one place
 
 ---
 
@@ -249,8 +270,9 @@ Reproduce Magento-style invalidation.
 
 ### Tasks
 
-* implement BAN or URL purge endpoint in Varnish
-* connect `/admin/product/{id}` to purge
+* implement BAN in Varnish
+* secure purge with a shared header token
+* connect `/admin/product/{id}` to BAN
 
 ### Test
 
@@ -258,10 +280,10 @@ Reproduce Magento-style invalidation.
 2. change product
 3. verify MISS → HIT again
 
-### Deliverables
+### Definition of Done
 
-* documented purge flow
-* runbook notes
+* purge flow documented with curl examples
+* unauthorized purge requests are rejected
 
 ---
 
@@ -269,13 +291,13 @@ Reproduce Magento-style invalidation.
 
 ### Objective
 
-Experience multi-layer cache confusion
+Experience multi-layer cache behavior.
 
 ### Tasks
 
 * domain
 * proxy through Cloudflare
-* configure basic rules
+* configure minimal ruleset
 
 ### Learn
 
@@ -284,18 +306,18 @@ Experience multi-layer cache confusion
 * where SSL terminates
 * real client IP handling
 
-### Deliverables
+### Definition of Done
 
-* diagram
-* explanation of responsibility split
+* `CF-Cache-Status` and `X-Cache` both visible
+* request-id remains consistent end-to-end
 
 ---
 
-# Phase 7 – Observability
+# Phase 7 – Observability (Minimum Viable)
 
 ### Objective
 
-Make system behavior visible.
+Make behavior visible early.
 
 ### Minimum
 
@@ -303,16 +325,19 @@ Make system behavior visible.
 * hit/miss ratio
 * backend latency
 * errors
-* confirm headers & cacheability align with API design
-* * e.g. if endpoint marked private → verify PASS.
+* confirm headers and cacheability align with API design
 
-If metrics stack is heavy, even logs + parsing is fine.
+If metrics stack is heavy, logs + parsing is fine.
 
-### Questions you must answer from dashboards
+### Questions you must answer
 
 * what is hit ratio?
 * what is bypass rate?
 * what happens when app is slow?
+
+### Definition of Done
+
+* a single dashboard or log query answers all questions
 
 ---
 
@@ -321,8 +346,6 @@ If metrics stack is heavy, even logs + parsing is fine.
 ### Objective
 
 Build instincts.
-
-Break things intentionally.
 
 ### Exercises
 
@@ -338,17 +361,21 @@ Break things intentionally.
 * detection
 * resolution
 
+### Definition of Done
+
+* each exercise has a short runbook and rollback
+
 ---
 
 # Phase 9 – CI/CD Maturity
 
 ### Objective
 
-Move from “it runs” → “it’s safe”.
+Move from it runs to it is safe.
 
 ### Add
 
-* openapi validation
+* OpenAPI validation
 ```
 validate openapi
 generate clients
@@ -356,7 +383,7 @@ fail if git diff exists
 ```
 * PR validation
 * image tagging
-* automatic deployment
+* automated deployment
 * rollback method
 
 ### Stretch goals
@@ -364,6 +391,11 @@ fail if git diff exists
 * ephemeral env per branch
 * smoke tests
 * config validation
+
+### Definition of Done
+
+* pipeline fails on spec drift
+* rollback command is documented and tested
 
 ---
 
@@ -379,7 +411,7 @@ Automate everything outside the cluster.
 * instance
 * security groups
 * DNS
-* maybe load balancer
+* optional load balancer
 
 ### Deliverables
 
@@ -387,6 +419,11 @@ Automate everything outside the cluster.
 make infra-up
 make infra-down
 ```
+
+### Definition of Done
+
+* infra creates a reachable k3s node
+* infra teardown removes all resources
 
 ---
 
@@ -401,17 +438,18 @@ Prove maintainability.
 * architecture
 * request flow
 * purge design
+* config ownership and source of truth
 * how to deploy
 * how to debug MISS
 * common failures
 * api evolution
-* * how to change API
-* * versioning strategy
-* * deprecation example
+	* how to change API
+	* versioning strategy
+	* deprecation example
 
 ---
 
-# Phase 12 - Frontend (Optional)
+# Phase 12 – Frontend (Optional)
 
 ### Objective
 
