@@ -93,11 +93,15 @@ Prove the request path end-to-end with one endpoint.
 ### Suggested Structure
 
 ```
-/api                → OpenAPI spec
-/app                → demo store
-/infra              → Pulumi
-/k8s                → manifests / helm
-/varnish            → VCL
+/apps
+    /web                → frontend (optional / vite react)
+    /api (Go)           → demo store
+    /varnish            → VCL
+/infra
+    /pulumi (TS)        → IaC for k8s and cloud resources
+    /k8s                → manifests
+/openapi                → OpenAPI spec
+    /api.yaml           → use `oapi-codegen` for Go types and server stubs
 /docs
 Makefile
 ```
@@ -142,7 +146,16 @@ OpenAPI
 Create:
 
 ```
-/api/openapi.yaml
+/openapi/api.yaml
+```
+
+Suggested Makefile target:
+
+```
+openapi:
+    oapi-codegen -generate types,chi-server \
+    -package api \
+    openapi/api.yaml > apps/api/internal/api.gen.go
 ```
 
 Define:
