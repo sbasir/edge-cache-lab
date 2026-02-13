@@ -4,3 +4,5 @@ services:
       context: ./apps/api
     ports:
       - "3000:3000"
+    environment:
+      - INSTANCE_NAME=local-dev

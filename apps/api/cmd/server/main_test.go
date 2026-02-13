@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,4 +46,40 @@ func TestHelloWorld(t *testing.T) {
 
 	// We can use testify/require to assert values, as it is more convenient
 	require.Equal(t, "Hello World!", response.Body.String())
+}
+
+type healthPayload struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+	Instance  string `json:"instance"`
+	RequestID string `json:"request_id"`
+}
+
+func TestHealth(t *testing.T) {
+	s := CreateNewServer()
+	s.MountHandlers()
+
+	os.Setenv("INSTANCE_NAME", "test-instance")
+	req, _ := http.NewRequest("GET", "/health", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, "application/json", response.Header().Get("Content-Type"))
+
+	var payload healthPayload
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if payload.Status != "ok" {
+		t.Fatalf("expected status ok, got %q", payload.Status)
+	}
+
+	if payload.RequestID == "" {
+		t.Fatalf("expected request_id to be set")
+	}
+
+	if payload.Instance != "test-instance" {
+		t.Fatalf("expected instance test-instance, got %q", payload.Instance)
+	}
 }
