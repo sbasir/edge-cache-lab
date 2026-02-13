@@ -44,19 +44,51 @@ Both backend and frontend code are generated or validated against this spec.
 
 Breaking the contract must fail CI.
 
+## Ownership Boundaries (Explicit)
+
+* OpenAPI is the source of truth for endpoints and cache policy intent.
+* App is the source of truth for response headers.
+* VCL is the source of truth for cache decisioning and purge mechanics.
+* Cloudflare rules must not override origin cache policy unless documented.
+
 ---
 
-# Phase 0 – Repository & Local Dev Loop
+## Global Guardrails (Non-Negotiable)
+
+* Pin versions for toolchains and container images.
+* Every phase includes a rollback or teardown step.
+* Every cacheable endpoint must have explicit cache headers.
+* Every phase has concrete curl-based acceptance checks.
+
+## Scope Deferrals (Intentional)
+
+* No database or Redis until cache behavior is stable.
+* No ingress or Helm in the first k8s phase.
+* No Cloudflare until Varnish HIT/MISS and purge are deterministic.
+* No Pulumi until local and k8s flows are repeatable.
+
+## Brutal MVP Path (If Time Is Short)
+
+* Day 1: Compose app with `GET /health`, request-id, and structured logs.
+* Day 2: OpenAPI spec for core endpoints + CI validation.
+* Day 3: Varnish in Compose with HIT/MISS headers.
+* Day 4: Purge flow with token + curl verification.
+* Day 5: Minimal observability proving hit ratio and bypass rate.
+
+---
+
+# Phase 0 – Walking Skeleton (Fast Path)
 
 ### Objective
 
-Create the skeleton and a fast local run loop.
+Prove the request path end-to-end with one endpoint.
 
 ### Deliverables
 
 * Repo structure
 * Makefile
 * Docker Compose dev loop
+* One working endpoint
 
 ### Suggested Structure
 
@@ -80,20 +112,6 @@ make test
 make logs
 ```
 
-### Definition of Done
-
-* `make up` starts app locally
-* `make test` runs a basic smoke test
-* README shows the local curl commands
-
----
-
-# Phase 0.5 – Walking Skeleton (Fast Path)
-
-### Objective
-
-Prove the request path end-to-end with one endpoint.
-
 ### Tasks
 
 * implement a single endpoint (`GET /health`)
@@ -102,8 +120,10 @@ Prove the request path end-to-end with one endpoint.
 
 ### Definition of Done
 
+* `make up` starts app locally
 * `curl /health` returns 200 with headers and body fields
 * log includes request-id and latency
+* README shows the local curl commands
 
 ---
 
@@ -199,6 +219,7 @@ This enables cache debugging.
 * `make test` includes API contract tests
 * `GET /product/{id}` includes cache headers
 * `GET /cart` is explicitly non-cacheable
+* structured logs include request-id and latency
 
 ---
 
@@ -214,6 +235,7 @@ Origin service works in k8s.
 * Service (ClusterIP)
 * scaling replicas
 * port-forward script or Make target
+* no ingress and no Helm in this phase
 
 ### Validate
 
@@ -259,6 +281,7 @@ curl /cart → PASS
 * `X-Cache` headers show HIT/MISS
 * VCL is versioned in Git
 * TTL can be changed in one place
+* cache bypass behavior is covered by curl checks
 
 ---
 
@@ -298,6 +321,7 @@ Experience multi-layer cache behavior.
 * domain
 * proxy through Cloudflare
 * configure minimal ruleset
+* document which headers are stripped or transformed
 
 ### Learn
 
@@ -313,11 +337,11 @@ Experience multi-layer cache behavior.
 
 ---
 
-# Phase 7 – Observability (Minimum Viable)
+# Phase 7 – Observability (Expansion)
 
 ### Objective
 
-Make behavior visible early.
+Expand visibility beyond the baseline logs and headers added earlier.
 
 ### Minimum
 
@@ -338,6 +362,7 @@ If metrics stack is heavy, logs + parsing is fine.
 ### Definition of Done
 
 * a single dashboard or log query answers all questions
+* log retention and rotation are defined
 
 ---
 
