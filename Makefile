@@ -22,12 +22,14 @@ help:
 	@echo "  docker-logs  - Follow the logs of the application"
 
 api-init:
-	@cd apps/api && go mod init edge-cache-lab/apps/api
+	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
+	go get -u github.com/go-chi/chi/v5 && \
+	go get -u "github.com/stretchr/testify/require" && \
+	go mod tidy
 
 api-install:
 	@cd apps/api && \
-	go get -u github.com/go-chi/chi/v5 && \
-	go get -u "github.com/stretchr/testify/require" && \
+	go mod download && \
 	go mod tidy
 
 api-update:

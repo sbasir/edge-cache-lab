@@ -21,14 +21,25 @@ type healthResponse struct {
 func main() {
 	s := CreateNewServer()
 	s.MountHandlers()
-	err := http.ListenAndServe(":3000", s.Router)
+
+	addr := ":" + getEnv("PORT", "3000")
+	err := http.ListenAndServe(addr, s.Router)
 	if err != nil {
 		log.Fatalf("level=fatal msg=server_failed err=%v", err)
 	}
 }
 
+func getEnv(key, fallback string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	return value
+}
+
 func getInstanceName() string {
-	if instance := os.Getenv("INSTANCE_NAME"); instance != "" {
+	if instance := getEnv("INSTANCE_NAME", ""); instance != "" {
 		return instance
 	}
 

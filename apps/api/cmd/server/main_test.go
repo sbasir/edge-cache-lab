@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,7 +58,7 @@ func TestHealth(t *testing.T) {
 	s := CreateNewServer()
 	s.MountHandlers()
 
-	os.Setenv("INSTANCE_NAME", "test-instance")
+	t.Setenv("INSTANCE_NAME", "test-instance")
 	req, _ := http.NewRequest("GET", "/health", nil)
 	response := executeRequest(req, s)
 

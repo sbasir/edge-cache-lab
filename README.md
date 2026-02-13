@@ -18,6 +18,7 @@ curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/b
 
 ```sh
 make api-init
+make api-lint
 make api-test
 make api-run
 curl http://localhost:3000/
