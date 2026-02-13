@@ -35,6 +35,15 @@ Managed by:
 * Safe to break, easy to fix.
 * Learn by simulating real incidents.
 
+## API First
+
+The API contract is the source of truth.
+
+Endpoints, request/response formats, and error models are defined in OpenAPI.
+Both backend and frontend code are generated or validated against this spec.
+
+Breaking the contract must fail CI.
+
 ---
 
 # Phase 0 – Repository & Tooling Foundation
@@ -79,36 +88,79 @@ No infra yet.
 
 ---
 
-# Phase 1 – Build the Fake Store Backend
+# Phase 1 – Define the API Contract
+
+### Objective
+
+Describe the system before implementing it.
+
+### Technology
+
+OpenAPI
+
+### Tasks
+
+Create:
+
+```
+/api/openapi.yaml
+```
+
+Define:
+
+#### Public endpoints
+
+* `GET /`
+* `GET /category`
+* `GET /product/{id}`
+
+#### Non-cacheable
+
+* `GET /cart`
+* `GET /account`
+
+#### Admin
+
+* `POST /admin/product/{id}` → triggers purge
+
+### Define models
+
+Example:
+* Product
+* Category
+* Error
+* Health
+
+### Deliverables
+
+* versioned spec in Git
+* reviewed like code
+* baseline for generation
+
+### Definition of Done
+
+If the spec changes → backend or frontend should fail build until regenerated.
+
+---
+
+# Phase 2 – Build the Backend From the Contract
 
 ### Objective
 
 Simulate Magento-like caching behavior with minimal code.
+Implement API described in OpenAPI.
 
-### Requirements
+### Tasks
 
-### Public cacheable pages
+* generate Go types/server interfaces
+* implement handlers
+* responses must match spec
+* compilation ensures alignment
 
-* `/`
-* `/category`
-* `/product/{id}`
+### Important Rule
 
-### Non-cacheable
-
-* `/cart`
-* `/account`
-
-### Cookie rule
-
-If `session` cookie exists → personalized → must bypass.
-
-### Admin endpoint
-
-```
-POST /admin/product/{id}
-```
-
-Triggers cache purge.
+Do not invent routes manually.
+If it’s not in the spec → it doesn’t exist.
 
 ### Response behavior
 
@@ -128,7 +180,7 @@ This helps you visually debug cache layers.
 
 ---
 
-# Phase 2 – Run App in Kubernetes (no Varnish yet)
+# Phase 3 – Run App in Kubernetes (no Varnish yet)
 
 ### Objective
 
@@ -153,7 +205,7 @@ Origin service works.
 
 ---
 
-# Phase 3 – Introduce Varnish
+# Phase 4 – Introduce Varnish
 
 ### Objective
 
@@ -189,7 +241,7 @@ Check headers.
 
 ---
 
-# Phase 4 – Add Purge / Invalidation
+# Phase 5 – Add Purge / Invalidation
 
 ### Objective
 
@@ -213,7 +265,7 @@ Reproduce Magento-style invalidation.
 
 ---
 
-# Phase 5 – Cloudflare in Front
+# Phase 6 – Cloudflare in Front
 
 ### Objective
 
@@ -239,7 +291,7 @@ Experience multi-layer cache confusion
 
 ---
 
-# Phase 6 – Observability
+# Phase 7 – Observability
 
 ### Objective
 
@@ -251,6 +303,8 @@ Make system behavior visible.
 * hit/miss ratio
 * backend latency
 * errors
+* confirm headers & cacheability align with API design
+* * e.g. if endpoint marked private → verify PASS.
 
 If metrics stack is heavy, even logs + parsing is fine.
 
@@ -262,7 +316,7 @@ If metrics stack is heavy, even logs + parsing is fine.
 
 ---
 
-# Phase 7 – Failure & Incident Simulations
+# Phase 8 – Failure & Incident Simulations
 
 ### Objective
 
@@ -286,7 +340,7 @@ Break things intentionally.
 
 ---
 
-# Phase 8 – CI/CD Maturity
+# Phase 9 – CI/CD Maturity
 
 ### Objective
 
@@ -294,6 +348,12 @@ Move from “it runs” → “it’s safe”.
 
 ### Add
 
+* openapi validation
+```
+validate openapi
+generate clients
+fail if git diff exists
+```
 * PR validation
 * image tagging
 * automatic deployment
@@ -307,7 +367,7 @@ Move from “it runs” → “it’s safe”.
 
 ---
 
-# Phase 9 – Infrastructure as Code (Pulumi)
+# Phase 10 – Infrastructure as Code (Pulumi)
 
 ### Objective
 
@@ -330,7 +390,7 @@ make infra-down
 
 ---
 
-# Phase 10 – Documentation Like a Production System
+# Phase 11 – Documentation Like a Production System
 
 ### Objective
 
@@ -344,6 +404,29 @@ Prove maintainability.
 * how to deploy
 * how to debug MISS
 * common failures
+* api evolution
+* * how to change API
+* * versioning strategy
+* * deprecation example
+
+---
+
+# Phase 12 - Frontend (Optional)
+
+### Objective
+
+Build a simple SPA that consumes the API.
+
+### Tasks
+
+* SPA Must Use Generated Client
+
+### Frontend must:
+
+* consume generated API client
+* no handwritten fetch logic
+
+If backend changes contract → frontend build fails.
 
 ---
 
