@@ -1,4 +1,6 @@
 SHELL := /bin/bash
+# Use Make's shell() to evaluate `go env GOPATH` when the Makefile is read
+GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
 
 .PHONY: help api-init api-install api-update api-run api-test docker-build docker-up docker-down docker-logs
 
@@ -10,6 +12,8 @@ help:
 	@echo "  api-install  - Install API dependencies"
 	@echo "  api-run      - Run the API server"
 	@echo "  api-test     - Run tests for the API"
+	@echo "  api-lint     - Run linters for the API"
+	@echo "  api-fmt      - Format the API code"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-build - Build the Docker images"
@@ -35,6 +39,12 @@ api-run: api-install
 
 api-test: api-install
 	@cd apps/api && go test ./... -v -cover
+
+api-lint:
+	@cd apps/api && $(GOLANGCI) run
+
+api-fmt:
+	@cd apps/api && $(GOLANGCI) fmt
 
 docker-build:
 	@docker compose build
