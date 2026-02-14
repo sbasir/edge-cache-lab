@@ -7,6 +7,9 @@ const config = new pulumi.Config();
 const awsConfig = new pulumi.Config("aws");
 const awsRegion = awsConfig.get("region") || "us-east-1";
 
+// Get current AWS account ID and region for IAM policies
+const current = aws.getCallerIdentity({});
+
 // Allow AMI override via config
 const amiOverride = config.get("ami");
 
@@ -34,10 +37,10 @@ const ssmPolicyAttachment = new aws.iam.RolePolicyAttachment(`${prefix}-ssm-poli
     policyArn: "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
 });
 
-// Custom policy for SSM Parameter Store read/write access
+// Custom policy for SSM Parameter Store read/write access (restricted to /k3s/* parameters)
 const parameterStorePolicy = new aws.iam.RolePolicy(`${prefix}-parameter-store-policy`, {
     role: k3sRole.name,
-    policy: JSON.stringify({
+    policy: pulumi.all([current, awsRegion]).apply(([caller, region]) => JSON.stringify({
         Version: "2012-10-17",
         Statement: [{
             Effect: "Allow",
@@ -47,9 +50,9 @@ const parameterStorePolicy = new aws.iam.RolePolicy(`${prefix}-parameter-store-p
                 "ssm:GetParametersByPath",
                 "ssm:PutParameter",
             ],
-            Resource: "*",
+            Resource: `arn:aws:ssm:${region}:${caller.accountId}:parameter/k3s/*`,
         }],
-    }),
+    })),
 });
 
 // Instance Profile to attach the role to EC2
