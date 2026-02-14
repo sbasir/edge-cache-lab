@@ -6,6 +6,8 @@ OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 K8S_NAMESPACE ?= edge-cache-api
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
+PURGE_TOKEN ?= test-purge-token
+
 .PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish validate-endpoints
 
 help:
@@ -97,7 +99,7 @@ docker-logs:
 	@docker compose logs -f --tail=100
 
 k8s-varnish-vcl-sync:
-	@BACKEND_HOST=edge-cache-api ./apps/varnish/render-k8s-vcl.sh
+	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
 
 k8s-local-up: k8s-varnish-vcl-sync
 	@docker build -t edge-cache-lab-api:local apps/api
@@ -129,7 +131,7 @@ validate-endpoints:
 	@echo "Validating endpoints on localhost:$(PORT)..."
 	@set -e; \
 	echo "Purging cache..."; \
-	curl -s -X PURGE http://localhost:$(PORT)/ -H "X-Purge-Token: test-purge-token" > /dev/null 2>&1 || true; \
+	curl -s -f -X PURGE http://localhost:$(PORT)/ -H "X-Purge-Token: test-purge-token" > /dev/null 2>&1 || (echo "✗ Cache purge failed" >&2; exit 1); \
 	echo ""; \
 	echo "✓ GET /health"; \
 	curl -s -f -i http://localhost:$(PORT)/health | grep -q "200 OK" || (echo "✗ /health failed" && exit 1); \

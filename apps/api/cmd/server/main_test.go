@@ -205,6 +205,23 @@ func TestUpdateProductUnauthorized(t *testing.T) {
 	require.Equal(t, "unauthorized", payload.Error)
 }
 
+func TestUpdateProductMissingPurgeToken(t *testing.T) {
+	s := newServer()
+	t.Setenv("PURGE_TOKEN", "test-purge-token")
+
+	body, err := json.Marshal(api.ProductUpdate{
+		Name: stringPtr("Updated Name"),
+	})
+	require.NoError(t, err)
+
+	req, _ := http.NewRequest("POST", "/admin/product/prod-001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	// Intentionally do not set X-Purge-Token header to verify required header behavior.
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusBadRequest, response.Code)
+}
+
 func TestRequestLogging(t *testing.T) {
 	var buffer bytes.Buffer
 	original := log.Writer()

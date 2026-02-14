@@ -12,18 +12,19 @@ sub vcl_recv {
     # Handle PURGE requests (invalidation)
     if (req.method == "PURGE") {
         # Validate purge token
+        # NOTE: test-purge-token is a deployment-time placeholder; replace via env/templating with a strong secret for each environment.
         if (req.http.X-Purge-Token != "test-purge-token") {
             return (synth(401, "Unauthorized"));
         }
         
         # BAN by product ID from URL if present
         if (req.url ~ "^/product/") {
-            ban("req.url ~ " + req.url);
+            ban(req.url ~ "^/product/");
             return (synth(200, "Purged"));
         }
         
         # BAN all cacheable content if no specific URL
-        ban("req.url ~ ^/");
+        ban("obj.http.url ~ ^/");
         return (synth(200, "Purged"));
     }
 

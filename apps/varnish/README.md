@@ -5,7 +5,7 @@ Reverse proxy cache layer for the Edge Cache Lab API.
 ## Files
 
 - `Dockerfile` - Container image with Varnish 8-alpine
-- `default.vcl.template` - Source VCL (backend set via `BACKEND_HOST`)
+- `default.vcl.template` - Source VCL (backend set via `BACKEND_HOST`, `PURGE_TOKEN` for cache invalidation)
 - `render-k8s-vcl.sh` - Generates the Kubernetes VCL from the template
 - `../infra/k8s/base/varnish/default.vcl` - Generated VCL for Kubernetes (used by kustomize)
 - `docker-entrypoint.sh` - Startup script for Docker Compose
@@ -21,7 +21,7 @@ Backend host: `edge-cache-api` (service name)
 
 ### Docker Compose
 
-Uses `default.vcl.template` with `BACKEND_HOST` environment variable substitution.
+Uses `default.vcl.template` with `BACKEND_HOST` and `PURGE_TOKEN` environment variable substitution.
 
 Backend host: `api` (service name)
 

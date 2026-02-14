@@ -90,8 +90,13 @@ curl -i -X POST http://localhost:6081/admin/product/prod-001 \
 curl -i http://localhost:6081/product/prod-001  # X-Cache: MISS
 ```
 
-Purge token is validated by both API and Varnish. Default token: `test-purge-token`.
+Purge token is validated by both the API and Varnish. The default token is `test-purge-token`.
 
+For non-default tokens:
+- Set the `PURGE_TOKEN` environment variable in the API deployment to your desired token value.
+- Configure Varnish (e.g., in the VCL) to expect the same token value.
+- Ensure the token value matches in both the API environment variable and the Varnish configuration; mismatches will cause purge requests to be rejected.
+- When changing the token, update all of these places and redeploy/reload both the API and Varnish.
 ## Endpoint Validation
 
 Run comprehensive endpoint tests:
