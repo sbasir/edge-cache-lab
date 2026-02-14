@@ -37,14 +37,25 @@ curl -i -X POST http://localhost:3000/admin/product/prod-001 \
 
 ## Local Docker dev
 
+**Note**: Docker Compose Varnish setup may encounter DNS resolution issues in certain CI environments. See [docs/docker-compose-issues.md](docs/docker-compose-issues.md) for details. For full Varnish functionality, use the Kubernetes deployment.
+
 ```sh
 make docker-up
 make docker-logs
 
-curl -i http://localhost:3000/
-curl -i http://localhost:3000/health
-curl -i http://localhost:3000/category
-curl -i http://localhost:3000/product/prod-001
+# Access via Varnish (Docker host port 6081 -> Varnish container port 80)
+curl -i http://localhost:6081/
+curl -i http://localhost:6081/health
+curl -i http://localhost:6081/category
+curl -i http://localhost:6081/product/prod-001
+
+# Verify cache behavior (X-Cache: MISS on first request, HIT on second)
+curl -i http://localhost:6081/product/prod-001
+curl -i http://localhost:6081/product/prod-001
+
+# Verify bypass for non-cacheable endpoints (X-Cache: PASS)
+curl -i http://localhost:6081/cart
+curl -i http://localhost:6081/account
 
 make docker-down
 ```
@@ -59,3 +70,33 @@ make openapi
 ```
 
 Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps/api/cmd/server`.
+
+## Varnish Cache
+
+Implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
+
+## Kubernetes
+
+Deploy to local Kubernetes:
+
+```sh
+# Deploy API and Varnish
+make k8s-test-local
+
+# Wait for rollout
+make k8s-wait
+
+# Check status
+make k8s-status
+
+# Port-forward Varnish (access at http://localhost:6081)
+make k8s-port-forward-varnish
+
+# In another terminal, test cache behavior
+curl -i http://localhost:6081/product/prod-001  # X-Cache: MISS
+curl -i http://localhost:6081/product/prod-001  # X-Cache: HIT
+curl -i http://localhost:6081/cart              # X-Cache: PASS
+
+# Cleanup
+make k8s-clean-local
+```

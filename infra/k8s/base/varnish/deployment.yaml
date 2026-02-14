@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: varnish
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: varnish
+  template:
+    metadata:
+      labels:
+        app: varnish
+    spec:
+      containers:
+        - name: varnish
+          image: varnish:8-alpine
+          command: 
+            - varnishd
+            - -F
+            - -f
+            - /etc/varnish/default.vcl
+            - -a
+            - "http=:80,HTTP"
+            # NOTE: TTL is configured in two places by design:
+            # - The VCL sets beresp.ttl = 2m for 200 responses (takes precedence).
+            # - default_ttl=120 here provides a fallback TTL for responses where the VCL
+            #   does not explicitly set beresp.ttl. 120 seconds == 2 minutes, so both
+            #   settings are consistent; this flag is kept as the global default.
+            - -p
+            - "default_ttl=120"
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: varnish-config
+              mountPath: /etc/varnish/default.vcl
+              subPath: default.vcl
+      volumes:
+        - name: varnish-config
+          configMap:
+            name: varnish-config
