@@ -43,19 +43,19 @@ curl -i -X POST http://localhost:3000/admin/product/prod-001 \
 make docker-up
 make docker-logs
 
-# Access via Varnish (port 8080) - may not work in all Docker environments
-curl -i http://localhost:8080/
-curl -i http://localhost:8080/health
-curl -i http://localhost:8080/category
-curl -i http://localhost:8080/product/prod-001
+# Access via Varnish (external port 6081, internal port 80)
+curl -i http://localhost:6081/
+curl -i http://localhost:6081/health
+curl -i http://localhost:6081/category
+curl -i http://localhost:6081/product/prod-001
 
 # Verify cache behavior (X-Cache: MISS on first request, HIT on second)
-curl -i http://localhost:8080/product/prod-001
-curl -i http://localhost:8080/product/prod-001
+curl -i http://localhost:6081/product/prod-001
+curl -i http://localhost:6081/product/prod-001
 
 # Verify bypass for non-cacheable endpoints (X-Cache: PASS)
-curl -i http://localhost:8080/cart
-curl -i http://localhost:8080/account
+curl -i http://localhost:6081/cart
+curl -i http://localhost:6081/account
 
 make docker-down
 ```
@@ -89,13 +89,13 @@ make k8s-wait
 # Check status
 make k8s-status
 
-# Port-forward Varnish (access at http://localhost:8080)
+# Port-forward Varnish (access at http://localhost:6081)
 make k8s-port-forward-varnish
 
 # In another terminal, test cache behavior
-curl -i http://localhost:8080/product/prod-001  # X-Cache: MISS
-curl -i http://localhost:8080/product/prod-001  # X-Cache: HIT
-curl -i http://localhost:8080/cart              # X-Cache: PASS
+curl -i http://localhost:6081/product/prod-001  # X-Cache: MISS
+curl -i http://localhost:6081/product/prod-001  # X-Cache: HIT
+curl -i http://localhost:6081/cart              # X-Cache: PASS
 
 # Cleanup
 make k8s-clean-local

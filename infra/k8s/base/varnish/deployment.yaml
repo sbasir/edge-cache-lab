@@ -15,20 +15,21 @@ spec:
       containers:
         - name: varnish
           image: varnish:8-alpine
+          command: 
+            - varnishd
+            - -F
+            - -f
+            - /etc/varnish/default.vcl
+            - -a
+            - "http=:80,HTTP"
+            - -p
+            - "default_ttl=120"
           ports:
             - containerPort: 80
           volumeMounts:
             - name: varnish-config
               mountPath: /etc/varnish/default.vcl
               subPath: default.vcl
-          args:
-            - "-F"
-            - "-f"
-            - "/etc/varnish/default.vcl"
-            - "-a"
-            - "http=:80,HTTP"
-            - "-p"
-            - "default_ttl=120"
       volumes:
         - name: varnish-config
           configMap:

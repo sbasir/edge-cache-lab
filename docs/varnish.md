@@ -38,14 +38,14 @@ backend default {
 
 Varnish is deployed as a separate pod with:
 - ConfigMap containing VCL configuration
-- Deployment with varnish:8-alpine image
-- ClusterIP Service exposing port 80
+- Deployment with varnish:8-alpine image (internal port 80)
+- ClusterIP Service exposing external port 6081
 
 Access via:
 ```bash
 make k8s-test-local
 make k8s-port-forward-varnish
-curl -i http://localhost:8080/product/prod-001
+curl -i http://localhost:6081/product/prod-001
 ```
 
 ### Docker Compose
@@ -63,11 +63,11 @@ make docker-up
 
 ```bash
 # First request - cache MISS
-curl -i http://localhost:8080/product/prod-001 | grep X-Cache
+curl -i http://localhost:6081/product/prod-001 | grep X-Cache
 # X-Cache: MISS
 
 # Second request - cache HIT
-curl -i http://localhost:8080/product/prod-001 | grep X-Cache
+curl -i http://localhost:6081/product/prod-001 | grep X-Cache
 # X-Cache: HIT
 ```
 
@@ -75,11 +75,11 @@ curl -i http://localhost:8080/product/prod-001 | grep X-Cache
 
 ```bash
 # Non-cacheable endpoint - always PASS
-curl -i http://localhost:8080/cart | grep X-Cache
+curl -i http://localhost:6081/cart | grep X-Cache
 # X-Cache: PASS
 
 # With session cookie
-curl -i -H "Cookie: session=abc123" http://localhost:8080/product/prod-001 | grep X-Cache
+curl -i -H "Cookie: session=abc123" http://localhost:6081/product/prod-001 | grep X-Cache
 # X-Cache: PASS
 ```
 

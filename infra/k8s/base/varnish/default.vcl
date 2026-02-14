@@ -1,7 +1,7 @@
 vcl 4.1;
 
 backend default {
-    .host = "api";
+    .host = "edge-cache-api";
     .port = "3000";
     .connect_timeout = 5s;
     .first_byte_timeout = 10s;
@@ -11,16 +11,19 @@ backend default {
 sub vcl_recv {
     # Bypass cache for non-cacheable endpoints
     if (req.url ~ "^/(cart|account)") {
+        set req.http.X-Pass = "true";
         return (pass);
     }
 
     # Bypass cache if session cookie is present
     if (req.http.Cookie ~ "session") {
+        set req.http.X-Pass = "true";
         return (pass);
     }
 
     # Only cache GET and HEAD requests
     if (req.method != "GET" && req.method != "HEAD") {
+        set req.http.X-Pass = "true";
         return (pass);
     }
 
@@ -36,7 +39,9 @@ sub vcl_backend_response {
 
 sub vcl_deliver {
     # Add X-Cache header to indicate cache status
-    if (obj.hits > 0) {
+    if (req.http.X-Pass) {
+        set resp.http.X-Cache = "PASS";
+    } elsif (obj.hits > 0) {
         set resp.http.X-Cache = "HIT";
     } else {
         set resp.http.X-Cache = "MISS";

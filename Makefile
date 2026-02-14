@@ -114,4 +114,4 @@ k8s-logs:
 	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
 
 k8s-port-forward-varnish:
-	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 8080:80
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
