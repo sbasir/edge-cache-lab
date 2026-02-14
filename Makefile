@@ -3,7 +3,10 @@ SHELL := /bin/bash
 GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
 OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 
-.PHONY: help api-init api-install api-update api-run api-test openapi openapi-validate docker-build docker-up docker-down docker-logs
+K8S_NAMESPACE ?= edge-cache-api
+K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
+
+.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward
 
 help:
 	@echo "Usage: make [target]"
@@ -25,7 +28,14 @@ help:
 	@echo "  docker-up    - Start the application using Docker Compose"
 	@echo "  docker-down  - Stop the application and remove containers"
 	@echo "  docker-logs  - Follow the logs of the application"
-
+	@echo ""
+	@echo "Kubernetes:"
+	@echo "  make k8s-test-local                   - Run manifests against a local k8s (e.g., OrbStack) or Docker environment"
+	@echo "  make k8s-clean-local                  - Remove local test resources (namespace, local image)"
+	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
+	@echo "  make k8s-status                       - Get status of resources"
+	@echo "  make k8s-logs                         - Tail logs"
+	@echo "  make k8s-port-forward                 - Port-forward the API service"
 api-init:
 	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
 	go get -u github.com/go-chi/chi/v5 && \
@@ -80,3 +90,24 @@ docker-down:
 
 docker-logs:
 	@docker compose logs -f --tail=100
+
+k8s-test-local:
+	@docker build -t edge-cache-lab-api:local apps/api
+	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
+
+k8s-port-forward:
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
+
+k8s-clean-local:
+	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
+	@kubectl delete namespace $(K8S_NAMESPACE) --ignore-not-found
+	@docker image rm -f edge-cache-lab-api:local > /dev/null 2>&1 || true
+
+k8s-wait:
+	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api
+
+k8s-status:
+	@kubectl -n $(K8S_NAMESPACE) get all
+
+k8s-logs:
+	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
