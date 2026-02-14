@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-cache-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge-cache-api
+  template:
+    metadata:
+      labels:
+        app: edge-cache-api
+    spec:
+      containers:
+        - name: api
+          image: edge-cache-lab-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: INSTANCE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
