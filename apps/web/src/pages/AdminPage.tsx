@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { OpenAPI } from '../api/core/OpenAPI';
 
+interface PurgeResponse {
+  data: unknown;
+  headers: Record<string, string>;
+}
+
 export default function AdminPage() {
   const [productId, setProductId] = useState('prod-001');
   const [productName, setProductName] = useState('Updated Product');
@@ -8,7 +13,7 @@ export default function AdminPage() {
   const [purgeToken, setPurgeToken] = useState('test-purge-token');
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [purgeResponse, setPurgeResponse] = useState<any>(null);
+  const [purgeResponse, setPurgeResponse] = useState<PurgeResponse | null>(null);
 
   const handleUpdate = async () => {
     try {

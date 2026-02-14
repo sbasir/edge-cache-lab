@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
@@ -14,7 +14,9 @@ function App() {
   );
 
   // Configure OpenAPI client
-  OpenAPI.BASE = apiBaseUrl;
+  useEffect(() => {
+    OpenAPI.BASE = apiBaseUrl;
+  }, [apiBaseUrl]);
 
   return (
     <Router>
