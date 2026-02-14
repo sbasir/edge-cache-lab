@@ -1,0 +1,49 @@
+name: App CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache: true
+          cache-dependency-path: |
+            apps/api/go.sum
+
+      - name: Install tooling
+        run: |
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+
+      - name: OpenAPI validate
+        run: make openapi-validate
+
+      - name: OpenAPI drift check
+        run: make openapi-diff
+
+      - name: OpenAPI codegen
+        run: make openapi
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.9
+          working-directory: apps/api
+
+      - name: Test
+        run: make api-test
+
+      - name: Build API image
+        run: make api-docker-build IMAGE_TAG=ci-${{ github.sha }}

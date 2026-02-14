@@ -2,14 +2,18 @@ SHELL := /bin/bash
 # Use Make's shell() to evaluate `go env GOPATH` when the Makefile is read
 GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
 OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
+ACT ?= act
+ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
+	--container-architecture linux/amd64 \
+	--pull=false
+IMAGE_TAG ?= local
 
 K8S_NAMESPACE ?= edge-cache-api
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
 PURGE_TOKEN ?= test-purge-token
 
-.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish validate-endpoints
-
+.PHONY: help 
 help:
 	@echo "Usage: make [target]"
 	@echo ""
@@ -24,6 +28,11 @@ help:
 	@echo "OpenAPI:"
 	@echo "  openapi          - Generate Go code from OpenAPI spec"
 	@echo "  openapi-validate - Validate OpenAPI spec"
+	@echo "  openapi-diff     - Fail if generated OpenAPI code differs"
+	@echo ""
+	@echo "CI:"
+	@echo "  app-ci           - Run CI checks locally"
+	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-build - Build the Docker images"
@@ -43,10 +52,13 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
+
+.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
+
 api-init:
 	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
 	go get -u github.com/go-chi/chi/v5 && \
-	go get -u "github.com/stretchr/testify/require" && \
+	go get -u github.com/stretchr/testify/require && \
 	go mod tidy
 
 api-install:
@@ -72,7 +84,7 @@ api-fmt:
 
 openapi:
 	@echo "Installing oapi-codegen if needed..."
-	@which $(OAPI_CODEGEN) > /dev/null || go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+	@which $(OAPI_CODEGEN) > /dev/null || go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
 	@echo "Generating Go code from OpenAPI spec..."
 	@mkdir -p apps/api/internal/api
 	@$(OAPI_CODEGEN) -generate types,chi-server \
@@ -86,6 +98,17 @@ openapi-validate:
 		-package api \
 		openapi/api.yaml > /dev/null 2>&1 && echo "✓ OpenAPI spec is valid" || (echo "✗ OpenAPI spec validation failed" && exit 1)
 
+openapi-diff:
+	@echo "Checking for OpenAPI codegen drift..."
+	@git diff --exit-code -- apps/api/internal/api/api.gen.go
+	@echo "✓ OpenAPI codegen is in sync"
+
+api-docker-build:
+	@docker build -t edge-cache-lab-api:$(IMAGE_TAG) apps/api
+
+app-ci: openapi-validate openapi-diff api-lint api-test openapi api-docker-build
+
+.PHONY: docker-build docker-up docker-down docker-logs
 docker-build:
 	@docker compose build
 
@@ -97,6 +120,8 @@ docker-down:
 
 docker-logs:
 	@docker compose logs -f --tail=100
+
+.PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish k8s-lint
 
 k8s-varnish-vcl-sync:
 	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
@@ -125,11 +150,27 @@ k8s-logs:
 k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
 
+k8s-lint:
+	@echo "Linting Kubernetes manifests with KubeLinter..."
+	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
+	@kube-linter lint infra/k8s
+
+.PHONY: validate-endpoints
 PORT ?= 6081
 
 validate-endpoints:
-	@echo "Validating endpoints on localhost:$(PORT)..."
+	@if kubectl -n $(K8S_NAMESPACE) get svc/varnish > /dev/null 2>&1; then \
+		echo "Detected Varnish service in Kubernetes..."; \
+		if ! lsof -i :$(PORT) > /dev/null 2>&1; then \
+			echo "✗ No process is listening on port $(PORT). Please ensure port-forwarding is set up correctly (e.g., 'make k8s-port-forward-varnish') and try again." >&2; \
+			exit 1; \
+		else \
+			echo "Port-forwarding to localhost:$(PORT) is active..."; \
+		fi; \
+	fi;
 	@set -e; \
+	echo ""; \
+	echo "✓ Validating API endpoints on http://localhost:$(PORT)"; \
 	echo "Purging cache..."; \
 	curl -s -f -X PURGE http://localhost:$(PORT)/ -H "X-Purge-Token: test-purge-token" > /dev/null 2>&1 || (echo "✗ Cache purge failed" >&2; exit 1); \
 	echo ""; \
@@ -158,7 +199,10 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-# Backwards compatibility aliases
-.PHONY: k8s-test-local k8s-clean-local
-k8s-test-local: k8s-local-up
-k8s-clean-local: k8s-local-down
+.PHONY: gh-act-app-ci gh-act-k8s-ci
+
+gh-act-app-ci:
+	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
+
+gh-act-k8s-ci:
+	@$(ACT) -W .github/workflows/k8s-ci.yaml $(ACT_FLAGS)

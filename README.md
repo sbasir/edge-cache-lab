@@ -75,6 +75,22 @@ make openapi
 
 Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps/api/cmd/server`.
 
+## CI/CD Baseline
+
+GitHub Actions runs OpenAPI validation, codegen drift checks, lint/test, and a Docker image build for the API.
+
+Local CI run:
+
+```sh
+make app-ci
+```
+
+Run the workflow with `act`:
+
+```sh
+make gh-act-app-ci
+```
+
 ## Varnish Cache
 
 Implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
