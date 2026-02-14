@@ -22,6 +22,11 @@ spec:
             - /etc/varnish/default.vcl
             - -a
             - "http=:80,HTTP"
+            # NOTE: TTL is configured in two places by design:
+            # - The VCL sets beresp.ttl = 2m for 200 responses (takes precedence).
+            # - default_ttl=120 here provides a fallback TTL for responses where the VCL
+            #   does not explicitly set beresp.ttl. 120 seconds == 2 minutes, so both
+            #   settings are consistent; this flag is kept as the global default.
             - -p
             - "default_ttl=120"
           ports:

@@ -6,7 +6,7 @@ OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 K8S_NAMESPACE ?= edge-cache-api
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
-.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish
+.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-varnish-vcl-sync k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish
 
 help:
 	@echo "Usage: make [target]"
@@ -30,6 +30,7 @@ help:
 	@echo "  docker-logs  - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
+	@echo "  make k8s-varnish-vcl-sync             - Generate Kubernetes VCL from template"
 	@echo "  make k8s-test-local                   - Run manifests against a local k8s (e.g., OrbStack) or Docker environment"
 	@echo "  make k8s-clean-local                  - Remove local test resources (namespace, local image)"
 	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
@@ -92,7 +93,10 @@ docker-down:
 docker-logs:
 	@docker compose logs -f --tail=100
 
-k8s-test-local:
+k8s-varnish-vcl-sync:
+	@BACKEND_HOST=edge-cache-api ./apps/varnish/render-k8s-vcl.sh
+
+k8s-test-local: k8s-varnish-vcl-sync
 	@docker build -t edge-cache-lab-api:local apps/api
 	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
 

@@ -43,7 +43,7 @@ curl -i -X POST http://localhost:3000/admin/product/prod-001 \
 make docker-up
 make docker-logs
 
-# Access via Varnish (external port 6081, internal port 80)
+# Access via Varnish (Docker host port 6081 -> Varnish container port 80)
 curl -i http://localhost:6081/
 curl -i http://localhost:6081/health
 curl -i http://localhost:6081/category
