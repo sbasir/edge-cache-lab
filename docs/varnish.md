@@ -26,6 +26,7 @@ backend default {
 2. **Bypass /cart and /account** - These endpoints contain user-specific data
 3. **Bypass if session cookie present** - Personalized content should not be cached
 4. **TTL: 2 minutes** - Cache entries expire after 120 seconds
+5. **Purge via PURGE** - URL-based invalidation with `X-Purge-Token`
 
 ### Headers
 
@@ -88,6 +89,16 @@ curl -i -H "Cookie: session=abc123" http://localhost:6081/product/prod-001 | gre
 # X-Cache: PASS
 ```
 
+### Purge / Invalidation
+
+Varnish supports URL-based purge with a shared token header. The VCL template expects a deployment-time `PURGE_TOKEN` value.
+
+```bash
+# Purge a product by URL
+curl -i -X PURGE http://localhost:6081/product/prod-001 \
+    -H "X-Purge-Token: test-purge-token"
+```
+
 ## Troubleshooting
 
 ### VCL Compilation Errors
@@ -104,9 +115,3 @@ If all requests show MISS:
 2. Verify request method is GET or HEAD
 3. Confirm no session cookies are present
 4. Check `X-Cache-Hits` header value
-
-## Next Steps (Phase 5)
-
-- Implement BAN/PURGE for cache invalidation
-- Secure purge with token authentication
-- Connect admin endpoints to trigger cache purges

@@ -11,6 +11,18 @@ The API is generated from the OpenAPI contract (`openapi/api.yaml`). Handlers li
 * Non-cacheable endpoints (`/cart`, `/account`) return:
   * `Cache-Control: no-store, no-cache, must-revalidate`
 * Every response includes a request id and response meta with timestamp + instance name.
+* Admin updates (`POST /admin/product/{id}`) require `X-Purge-Token` and return `X-Purge-Tags`.
+
+### Purge / invalidation
+
+Varnish supports URL-based purge with `PURGE` and a shared token header.
+
+```sh
+curl -i -X PURGE http://localhost:6081/product/prod-001 \
+  -H 'X-Purge-Token: test-purge-token'
+```
+
+See [docs/varnish.md](docs/varnish.md) for VCL details.
 
 ### Local verification
 
