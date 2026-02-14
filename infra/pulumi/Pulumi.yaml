@@ -1,0 +1,6 @@
+name: edge-cache-lab
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+description: Infrastructure for edge-cache-lab k3s cluster on AWS spot instance

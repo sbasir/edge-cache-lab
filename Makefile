@@ -50,6 +50,15 @@ help:
 	@echo "  make k8s-port-forward                 - Port-forward the API service"
 	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
 	@echo ""
+	@echo "Infrastructure (Pulumi):"
+	@echo "  infra-init          - Install Pulumi dependencies"
+	@echo "  infra-preview       - Preview infrastructure changes"
+	@echo "  infra-up            - Deploy infrastructure to AWS"
+	@echo "  infra-status        - Show infrastructure outputs"
+	@echo "  infra-down          - Destroy infrastructure"
+	@echo "  infra-ssm-connect   - Get SSM connect command"
+	@echo "  infra-kubeconfig    - Configure kubectl for remote k3s"
+	@echo ""
 	@echo "Testing:"
 	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
 
@@ -206,3 +215,26 @@ gh-act-app-ci:
 
 gh-act-k8s-ci:
 	@$(ACT) -W .github/workflows/k8s-ci.yaml $(ACT_FLAGS)
+
+.PHONY: infra-init infra-preview infra-up infra-status infra-down infra-ssm-connect infra-kubeconfig
+
+infra-init:
+	@cd infra/pulumi && npm install
+
+infra-preview:
+	@cd infra/pulumi && pulumi preview
+
+infra-up:
+	@cd infra/pulumi && pulumi up
+
+infra-status:
+	@cd infra/pulumi && pulumi stack output
+
+infra-down:
+	@cd infra/pulumi && pulumi destroy
+
+infra-ssm-connect:
+	@cd infra/pulumi && pulumi stack output ssmConnectCommand
+
+infra-kubeconfig:
+	@cd infra/pulumi && eval "$$(pulumi stack output kubectlSetupCommand)"

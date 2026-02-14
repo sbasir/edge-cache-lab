@@ -164,3 +164,37 @@ curl -i http://localhost:6081/cart              # X-Cache: PASS
 # Cleanup
 make k8s-local-down
 ```
+
+## Infrastructure as Code (Pulumi)
+
+Deploy k3s cluster on AWS spot instance with automated edge-cache-lab deployment:
+
+```sh
+# Initialize (first time)
+cd infra/pulumi
+npm install
+pulumi stack init dev
+pulumi config set aws:region us-east-1
+
+# Deploy infrastructure
+make infra-up
+
+# View outputs (public IP, SSM command, etc.)
+make infra-status
+
+# Access via SSM Session Manager
+make infra-ssm-connect
+
+# Configure kubectl for remote k3s cluster
+make infra-kubeconfig
+kubectl get nodes
+
+# Access Varnish endpoint (get URL from outputs)
+curl $(cd infra/pulumi && pulumi stack output varnishEndpoint)/health
+
+# Teardown
+make infra-down
+```
+
+See [infra/pulumi/README.md](infra/pulumi/README.md) for details.
+
