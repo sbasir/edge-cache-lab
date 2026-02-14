@@ -79,7 +79,7 @@ fi
 # Store kubeconfig in SSM Parameter Store (SecureString)
 echo "[kubernetes] Storing kubeconfig in SSM Parameter Store..."
 if command -v aws &> /dev/null; then
-    KUBECONFIG_B64=$(cat /etc/rancher/k3s/k3s.yaml | base64 -w0)
+    KUBECONFIG_B64=$(base64 -w0 < /etc/rancher/k3s/k3s.yaml)
     aws ssm put-parameter \
         --name "/k3s/kubeconfig" \
         --value "$KUBECONFIG_B64" \

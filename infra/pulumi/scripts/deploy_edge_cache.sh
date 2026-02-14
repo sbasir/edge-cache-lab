@@ -28,7 +28,7 @@ if [ ! -d "$WORK_DIR" ]; then
     git clone -b "$REPO_BRANCH" "$REPO_URL" "$WORK_DIR"
 else
     echo "[edge-cache-lab] Repository already exists, pulling latest..."
-    cd "$WORK_DIR" && git pull || true
+    (cd "$WORK_DIR" && git pull) || true
 fi
 
 cd "$WORK_DIR"
