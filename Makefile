@@ -6,7 +6,7 @@ OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 K8S_NAMESPACE ?= edge-cache-api
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
-.PHONY: help api-init api-install api-update api-run api-test openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward
+.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward
 
 help:
 	@echo "Usage: make [target]"
@@ -30,8 +30,8 @@ help:
 	@echo "  docker-logs  - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
-	@echo "  make k8s-test-local                   - Run manifests against a local k8s (e.g Orbstack) or Docker environment"
-	@echo "  make k8s-clean-local                  - Remove local test resources (namespace, local image, temp key)"
+	@echo "  make k8s-test-local                   - Run manifests against a local k8s (e.g., OrbStack) or Docker environment"
+	@echo "  make k8s-clean-local                  - Remove local test resources (namespace, local image)"
 	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
 	@echo "  make k8s-status                       - Get status of resources"
 	@echo "  make k8s-logs                         - Tail logs"
@@ -102,7 +102,6 @@ k8s-clean-local:
 	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
 	@kubectl delete namespace $(K8S_NAMESPACE) --ignore-not-found
 	@docker image rm -f edge-cache-lab-api:local > /dev/null 2>&1 || true
-	@rm -f /tmp/edge-cache-lab.local.key
 
 k8s-wait:
 	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api
