@@ -4,6 +4,16 @@ services:
       context: ./apps/api
     environment:
       - INSTANCE_NAME=local-dev
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      varnish-net:
+        aliases:
+          - api
 
   varnish:
     build:
@@ -11,4 +21,13 @@ services:
     ports:
       - "8080:80"
     depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - varnish-net
+    links:
       - api
+
+networks:
+  varnish-net:
+    driver: bridge
