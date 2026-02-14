@@ -12,6 +12,8 @@ spec:
       labels:
         app: varnish
     spec:
+      securityContext:
+        runAsUser: 1000    
       containers:
         - name: varnish
           image: varnish:8-alpine
@@ -31,6 +33,15 @@ spec:
             - "default_ttl=120"
           ports:
             - containerPort: 80
+          resources:
+            limits:
+              cpu: "400m"
+              memory: "256Mi"
+            requests:
+              cpu: "200m"
+              memory: "128Mi"
+          securityContext: 
+            readOnlyRootFilesystem: true            
           volumeMounts:
             - name: varnish-config
               mountPath: /etc/varnish/default.vcl
