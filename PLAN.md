@@ -35,6 +35,16 @@ Managed by:
 * Safe to break, easy to fix.
 * Learn by simulating real incidents.
 
+## Current Status (As Of 2026-02-14)
+
+Phases 0-5 are implemented and validated locally and in Kubernetes:
+
+* OpenAPI-driven handlers and tests are in place.
+* Cache headers, request id, and response meta are returned for cacheable endpoints.
+* Varnish is deployed in Compose and Kubernetes with HIT/MISS/PASS behavior.
+* Purge is supported via Varnish `PURGE` with `X-Purge-Token`.
+* Admin updates validate `X-Purge-Token` and return `X-Purge-Tags` for invalidation workflows.
+
 ## API First
 
 The API contract is the source of truth.
@@ -64,8 +74,9 @@ Breaking the contract must fail CI.
 
 * No database or Redis until cache behavior is stable.
 * No ingress or Helm in the first k8s phase.
-* No Cloudflare until Varnish HIT/MISS and purge are deterministic.
-* No Pulumi until local and k8s flows are repeatable.
+* No CI/CD until local flows are repeatable.
+* No Pulumi until CI/CD baselines exist and local + k8s flows are repeatable.
+* No Cloudflare until Varnish HIT/MISS and purge are deterministic and infra exists.
 
 ## Brutal MVP Path (If Time Is Short)
 
@@ -306,24 +317,89 @@ Reproduce Magento-style invalidation.
 
 ### Tasks
 
-* implement BAN in Varnish
+* implement `PURGE` + BAN in Varnish
 * secure purge with a shared header token
-* connect `/admin/product/{id}` to BAN
+* validate `X-Purge-Token` on `/admin/product/{id}` and return `X-Purge-Tags`
+* document why tag-based purge wiring is deferred
 
 ### Test
 
 1. load product → HIT
-2. change product
-3. verify MISS → HIT again
+2. update product (admin endpoint)
+3. send `PURGE /product/{id}` with `X-Purge-Token`
+4. verify MISS → HIT again
 
 ### Definition of Done
 
 * purge flow documented with curl examples
 * unauthorized purge requests are rejected
 
+### Deferred: tag-based purge wiring (future)
+
+Wire `X-Purge-Tags` into Varnish BAN rules after the URL-based flow is stable. This matters because:
+
+* Tag-based invalidation lets you purge related objects (product detail + category + homepage) in one action.
+* It avoids brittle URL coupling when routes or query strings evolve.
+* It matches common CDN cache workflows used by larger platforms.
+
 ---
 
-# Phase 6 – Cloudflare in Front
+# Phase 6 – CI/CD Baseline
+
+### Objective
+
+Make API and spec changes safe before provisioning cloud infrastructure.
+From this phase onward, CI/CD improvements are applied as needed in each phase.
+
+### Add
+
+* OpenAPI validation on PRs
+* codegen drift detection (fail on git diff)
+* API lint + test
+* image build + tag (no deploy yet)
+* local GitHub Actions validation with `act`
+
+### Acceptance checks
+
+* `act` runs the main workflow locally
+* PR workflow fails on OpenAPI drift and lint/test failures
+
+### Definition of Done
+
+* pipeline fails on spec drift
+* rollback or teardown step documented for pipeline artifacts
+
+---
+
+# Phase 7 – Infrastructure as Code (Pulumi)
+
+### Objective
+
+Automate everything outside the cluster.
+
+### Provision
+
+* VPC
+* instance
+* security groups
+* DNS
+* optional load balancer
+
+### Deliverables
+
+```
+make infra-up
+make infra-down
+```
+
+### Definition of Done
+
+* infra creates a reachable k3s node
+* infra teardown removes all resources
+
+---
+
+# Phase 8 – Cloudflare in Front
 
 ### Objective
 
@@ -350,7 +426,26 @@ Experience multi-layer cache behavior.
 
 ---
 
-# Phase 7 – Observability (Expansion)
+# Phase 9 – Frontend
+
+### Objective
+
+Build a simple SPA that consumes the API.
+
+### Tasks
+
+* SPA Must Use Generated Client
+
+### Frontend must:
+
+* consume generated API client
+* no handwritten fetch logic
+
+If backend changes contract → frontend build fails.
+
+---
+
+# Phase 10 – Observability (Expansion)
 
 ### Objective
 
@@ -379,7 +474,7 @@ If metrics stack is heavy, logs + parsing is fine.
 
 ---
 
-# Phase 8 – Failure & Incident Simulations
+# Phase 11 – Failure & Incident Simulations
 
 ### Objective
 
@@ -405,67 +500,7 @@ Build instincts.
 
 ---
 
-# Phase 9 – CI/CD Maturity
-
-### Objective
-
-Move from it runs to it is safe.
-
-### Add
-
-* OpenAPI validation
-```
-validate openapi
-generate clients
-fail if git diff exists
-```
-* PR validation
-* image tagging
-* automated deployment
-* rollback method
-
-### Stretch goals
-
-* ephemeral env per branch
-* smoke tests
-* config validation
-
-### Definition of Done
-
-* pipeline fails on spec drift
-* rollback command is documented and tested
-
----
-
-# Phase 10 – Infrastructure as Code (Pulumi)
-
-### Objective
-
-Automate everything outside the cluster.
-
-### Provision
-
-* VPC
-* instance
-* security groups
-* DNS
-* optional load balancer
-
-### Deliverables
-
-```
-make infra-up
-make infra-down
-```
-
-### Definition of Done
-
-* infra creates a reachable k3s node
-* infra teardown removes all resources
-
----
-
-# Phase 11 – Documentation Like a Production System
+# Phase 12 – Documentation Like a Production System
 
 ### Objective
 
@@ -481,28 +516,9 @@ Prove maintainability.
 * how to debug MISS
 * common failures
 * api evolution
-	* how to change API
-	* versioning strategy
-	* deprecation example
-
----
-
-# Phase 12 – Frontend (Optional)
-
-### Objective
-
-Build a simple SPA that consumes the API.
-
-### Tasks
-
-* SPA Must Use Generated Client
-
-### Frontend must:
-
-* consume generated API client
-* no handwritten fetch logic
-
-If backend changes contract → frontend build fails.
+    * how to change API
+    * versioning strategy
+    * deprecation example
 
 ---
 

@@ -2,6 +2,10 @@
 
 A production-like, fully automated mini e-commerce platform that demonstrates CDN → Varnish → App → DB behavior, including CI/CD, observability, and safe operations.
 
+## Current Status
+
+Phases 0-5 are implemented and validated locally and in Kubernetes (OpenAPI contract, cache headers, Varnish HIT/MISS/PASS, and purge via `PURGE` with `X-Purge-Token`).
+
 ## Prerequisites
 
 * Go 1.26 (for API server and code generation)
@@ -77,14 +81,20 @@ Implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md
 
 ## Cache Purge / Invalidation
 
-Update a product and trigger cache purge with a token:
+Update a product and purge cached content with a token:
 
 ```sh
-# With Docker Compose
+# With Docker Compose (through Varnish)
 curl -i -X POST http://localhost:6081/admin/product/prod-001 \
   -H 'Content-Type: application/json' \
   -H 'X-Purge-Token: test-purge-token' \
   -d '{"name":"Updated Product","inStock":false}'
+
+# Response includes X-Purge-Tags (e.g., product:prod-001) for purge tooling.
+
+# Purge cached product by URL (Varnish only supports PURGE here)
+curl -i -X PURGE http://localhost:6081/product/prod-001 \
+  -H 'X-Purge-Token: test-purge-token'
 
 # Verify purge worked - next GET should be MISS
 curl -i http://localhost:6081/product/prod-001  # X-Cache: MISS
