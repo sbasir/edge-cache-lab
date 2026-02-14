@@ -20,6 +20,7 @@ const (
 	surrogateControl    = "max-age=120"
 	cacheControlPrivate = "no-store, no-cache, must-revalidate"
 	xCacheMiss          = "MISS"
+	defaultPurgeToken   = "test-purge-token"
 )
 
 type Server struct {
@@ -216,7 +217,14 @@ func (a *API) GetAccount(w http.ResponseWriter, r *http.Request) {
 	a.writeJSON(w, r, http.StatusOK, resp)
 }
 
-func (a *API) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
+func (a *API) UpdateProduct(w http.ResponseWriter, r *http.Request, id string, params api.UpdateProductParams) {
+	// Validate purge token
+	expectedToken := getEnv("PURGE_TOKEN", defaultPurgeToken)
+	if params.XPurgeToken != expectedToken {
+		a.writeError(w, r, http.StatusUnauthorized, "unauthorized", "Invalid or missing purge token")
+		return
+	}
+
 	var update api.ProductUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		a.writeError(w, r, http.StatusBadRequest, "invalid_request", "Invalid JSON body")

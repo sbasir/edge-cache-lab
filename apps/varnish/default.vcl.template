@@ -9,6 +9,25 @@ backend default {
 }
 
 sub vcl_recv {
+    # Handle PURGE requests (invalidation)
+    if (req.method == "PURGE") {
+        # Validate purge token
+        # NOTE: PURGE_TOKEN is a deployment-time placeholder; replace via env/templating with a strong secret for each environment.
+        if (req.http.X-Purge-Token != "PURGE_TOKEN") {
+            return (synth(401, "Unauthorized"));
+        }
+        
+        # BAN by product ID from URL if present
+        if (req.url ~ "^/product/") {
+            ban(req.url ~ "^/product/");
+            return (synth(200, "Purged"));
+        }
+        
+        # BAN all cacheable content if no specific URL
+        ban("obj.http.url ~ ^/");
+        return (synth(200, "Purged"));
+    }
+
     # Bypass cache for non-cacheable endpoints
     if (req.url ~ "^/(cart|account)") {
         set req.http.X-Pass = "true";

@@ -75,13 +75,51 @@ Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps
 
 Implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
 
+## Cache Purge / Invalidation
+
+Update a product and trigger cache purge with a token:
+
+```sh
+# With Docker Compose
+curl -i -X POST http://localhost:6081/admin/product/prod-001 \
+  -H 'Content-Type: application/json' \
+  -H 'X-Purge-Token: test-purge-token' \
+  -d '{"name":"Updated Product","inStock":false}'
+
+# Verify purge worked - next GET should be MISS
+curl -i http://localhost:6081/product/prod-001  # X-Cache: MISS
+```
+
+Purge token is validated by both the API and Varnish. The default token is `test-purge-token`.
+
+For non-default tokens:
+- Set the `PURGE_TOKEN` environment variable in the API deployment to your desired token value.
+- Configure Varnish (e.g., in the VCL) to expect the same token value.
+- Ensure the token value matches in both the API environment variable and the Varnish configuration; mismatches will cause purge requests to be rejected.
+- When changing the token, update all of these places and redeploy/reload both the API and Varnish.
+## Endpoint Validation
+
+Run comprehensive endpoint tests:
+
+```sh
+# Test against Docker Compose (default port 6081)
+make docker-up
+make validate-endpoints
+
+# Test against Kubernetes (after port-forward)
+make k8s-local-up && make k8s-wait
+make k8s-port-forward-varnish  # in one terminal
+make validate-endpoints        # in another
+make k8s-local-down
+```
+
 ## Kubernetes
 
 Deploy to local Kubernetes:
 
 ```sh
 # Deploy API and Varnish
-make k8s-test-local
+make k8s-local-up
 
 # Wait for rollout
 make k8s-wait
@@ -98,5 +136,5 @@ curl -i http://localhost:6081/product/prod-001  # X-Cache: HIT
 curl -i http://localhost:6081/cart              # X-Cache: PASS
 
 # Cleanup
-make k8s-clean-local
+make k8s-local-down
 ```

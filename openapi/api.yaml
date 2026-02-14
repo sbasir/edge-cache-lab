@@ -202,6 +202,12 @@ paths:
           schema:
             type: string
           description: Product ID
+        - name: X-Purge-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Token required to authorize cache purge
       requestBody:
         required: true
         content:
@@ -210,7 +216,7 @@ paths:
               $ref: '#/components/schemas/ProductUpdate'
       responses:
         '200':
-          description: Product updated successfully
+          description: Product updated successfully; purge initiated
           headers:
             X-Request-Id:
               schema:
@@ -218,11 +224,17 @@ paths:
             X-Purge-Tags:
               schema:
                 type: string
-              description: Cache tags to purge
+              description: Cache tags purged
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+        '401':
+          description: Unauthorized; invalid or missing purge token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Product not found
           content:
