@@ -162,6 +162,7 @@ func TestAccountNoCache(t *testing.T) {
 
 func TestUpdateProduct(t *testing.T) {
 	s := newServer()
+	t.Setenv("PURGE_TOKEN", "test-purge-token")
 
 	body, err := json.Marshal(api.ProductUpdate{
 		Name:    stringPtr("Updated Name"),
@@ -171,6 +172,7 @@ func TestUpdateProduct(t *testing.T) {
 
 	req, _ := http.NewRequest("POST", "/admin/product/prod-001", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Purge-Token", "test-purge-token")
 	response := executeRequest(req, s)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
@@ -180,6 +182,27 @@ func TestUpdateProduct(t *testing.T) {
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
 	require.Equal(t, "Updated Name", payload.Name)
 	require.False(t, payload.InStock)
+}
+
+func TestUpdateProductUnauthorized(t *testing.T) {
+	s := newServer()
+	t.Setenv("PURGE_TOKEN", "test-purge-token")
+
+	body, err := json.Marshal(api.ProductUpdate{
+		Name: stringPtr("Updated Name"),
+	})
+	require.NoError(t, err)
+
+	req, _ := http.NewRequest("POST", "/admin/product/prod-001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Purge-Token", "wrong-token")
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusUnauthorized, response.Code)
+
+	var payload api.Error
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, "unauthorized", payload.Error)
 }
 
 func TestRequestLogging(t *testing.T) {

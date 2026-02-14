@@ -101,6 +101,12 @@ type ResponseMeta struct {
 	Timestamp       time.Time          `json:"timestamp"`
 }
 
+// UpdateProductParams defines parameters for UpdateProduct.
+type UpdateProductParams struct {
+	// XPurgeToken Token required to authorize cache purge
+	XPurgeToken string `json:"X-Purge-Token"`
+}
+
 // UpdateProductJSONRequestBody defines body for UpdateProduct for application/json ContentType.
 type UpdateProductJSONRequestBody = ProductUpdate
 
@@ -114,7 +120,7 @@ type ServerInterface interface {
 	GetAccount(w http.ResponseWriter, r *http.Request)
 	// Update product (triggers cache purge)
 	// (POST /admin/product/{id})
-	UpdateProduct(w http.ResponseWriter, r *http.Request, id string)
+	UpdateProduct(w http.ResponseWriter, r *http.Request, id string, params UpdateProductParams)
 	// Get user cart (non-cacheable)
 	// (GET /cart)
 	GetCart(w http.ResponseWriter, r *http.Request)
@@ -147,7 +153,7 @@ func (_ Unimplemented) GetAccount(w http.ResponseWriter, r *http.Request) {
 
 // Update product (triggers cache purge)
 // (POST /admin/product/{id})
-func (_ Unimplemented) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
+func (_ Unimplemented) UpdateProduct(w http.ResponseWriter, r *http.Request, id string, params UpdateProductParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -226,8 +232,36 @@ func (siw *ServerInterfaceWrapper) UpdateProduct(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateProductParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-Purge-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Purge-Token")]; found {
+		var XPurgeToken string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Purge-Token", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Purge-Token", valueList[0], &XPurgeToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Purge-Token", Err: err})
+			return
+		}
+
+		params.XPurgeToken = XPurgeToken
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Purge-Token is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Purge-Token", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateProduct(w, r, id)
+		siw.Handler.UpdateProduct(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
