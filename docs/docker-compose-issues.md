@@ -25,4 +25,4 @@ If you encounter this issue, you can:
 The Kubernetes deployment does not have this issue as it uses CoreDNS which reliably resolves service names.
 
 ### Status
-This is a known limitation of the Docker Compose setup in certain environments. The Kubernetes deployment (Phase 4) works correctly.
+This is a known limitation of the Docker Compose setup in certain environments. The Kubernetes deployment works correctly.

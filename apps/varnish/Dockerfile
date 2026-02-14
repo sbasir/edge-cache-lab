@@ -1,4 +1,4 @@
-FROM varnish:7.6-alpine
+FROM varnish:8-alpine
 
 COPY default.vcl.template /etc/varnish/default.vcl.template
 COPY --chmod=755 docker-entrypoint.sh /docker-entrypoint.sh

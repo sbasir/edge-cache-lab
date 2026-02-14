@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: varnish
-          image: varnish:7.6-alpine
+          image: varnish:8-alpine
           ports:
             - containerPort: 80
           volumeMounts:

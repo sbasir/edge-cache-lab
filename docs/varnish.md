@@ -2,7 +2,7 @@
 
 ## Overview
 
-Varnish is configured as a reverse proxy cache in front of the API service. It implements Phase 4 of the Edge Cache Lab plan.
+Varnish is configured as a reverse proxy cache in front of the API service.
 
 ## VCL Configuration
 
@@ -38,7 +38,7 @@ backend default {
 
 Varnish is deployed as a separate pod with:
 - ConfigMap containing VCL configuration
-- Deployment with varnish:7.6-alpine image
+- Deployment with varnish:8-alpine image
 - ClusterIP Service exposing port 80
 
 Access via:

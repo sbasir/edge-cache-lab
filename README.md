@@ -73,7 +73,7 @@ Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps
 
 ## Varnish Cache
 
-Phase 4 implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
+Implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
 
 ## Kubernetes
 
