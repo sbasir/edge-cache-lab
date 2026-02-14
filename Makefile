@@ -25,6 +25,15 @@ help:
 	@echo "  api-lint     - Run linters for the API"
 	@echo "  api-fmt      - Format the API code"
 	@echo ""
+	@echo "Web:"
+	@echo "  web-install         - Install web dependencies"
+	@echo "  web-generate-client - Generate OpenAPI TypeScript client"
+	@echo "  web-run             - Run the web dev server"
+	@echo "  web-build           - Build web for production"
+	@echo "  web-preview         - Preview production build"
+	@echo "  web-lint            - Lint web code"
+	@echo "  web-docker-build    - Build web Docker image"
+	@echo ""
 	@echo "OpenAPI:"
 	@echo "  openapi          - Generate Go code from OpenAPI spec"
 	@echo "  openapi-validate - Validate OpenAPI spec"
@@ -49,11 +58,12 @@ help:
 	@echo "  make k8s-logs                         - Tail logs"
 	@echo "  make k8s-port-forward                 - Port-forward the API service"
 	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
+	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
 	@echo ""
 	@echo "Testing:"
 	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
 
-.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
+.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci web-install web-generate-client web-run web-build web-preview web-lint web-docker-build
 
 api-init:
 	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
@@ -81,6 +91,33 @@ api-lint:
 
 api-fmt:
 	@cd apps/api && $(GOLANGCI) fmt
+
+web-install:
+	@echo "Installing web dependencies..."
+	@cd apps/web && corepack enable && corepack prepare pnpm@10.28.1 --activate && pnpm install
+
+web-generate-client:
+	@echo "Generating OpenAPI TypeScript client..."
+	@cd apps/web && pnpm run generate-client
+	@echo "✓ Generated TypeScript client in apps/web/src/api"
+
+web-run: web-install
+	@echo "Starting web dev server on http://localhost:5173" && \
+	cd apps/web && pnpm run dev
+
+web-build: web-install
+	@echo "Building web for production..." && \
+	cd apps/web && pnpm run build
+
+web-preview: web-build
+	@echo "Previewing production build on http://localhost:4173" && \
+	cd apps/web && pnpm run preview
+
+web-lint:
+	@cd apps/web && pnpm run lint
+
+web-docker-build:
+	@docker build -t edge-cache-lab-web:$(IMAGE_TAG) apps/web
 
 openapi:
 	@echo "Installing oapi-codegen if needed..."
@@ -128,6 +165,7 @@ k8s-varnish-vcl-sync:
 
 k8s-local-up: k8s-varnish-vcl-sync
 	@docker build -t edge-cache-lab-api:local apps/api
+	@docker build -t edge-cache-lab-web:local apps/web
 	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
 
 k8s-port-forward:
@@ -137,6 +175,7 @@ k8s-local-down:
 	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
 	@kubectl delete namespace $(K8S_NAMESPACE) --ignore-not-found
 	@docker image rm -f edge-cache-lab-api:local > /dev/null 2>&1 || true
+	@docker image rm -f edge-cache-lab-web:local > /dev/null 2>&1 || true
 
 k8s-wait:
 	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api
@@ -149,6 +188,9 @@ k8s-logs:
 
 k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
+
+k8s-port-forward-web:
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/web 8080:80
 
 k8s-lint:
 	@echo "Linting Kubernetes manifests with KubeLinter..."

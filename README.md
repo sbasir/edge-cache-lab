@@ -4,7 +4,7 @@ A production-like, fully automated mini e-commerce platform that demonstrates CD
 
 ## Current Status
 
-Phases 0-5 are implemented and validated locally and in Kubernetes (OpenAPI contract, cache headers, Varnish HIT/MISS/PASS, and purge via `PURGE` with `X-Purge-Token`).
+Phases 0-6 and 9 are implemented and validated locally and in Kubernetes (OpenAPI contract, cache headers, Varnish HIT/MISS/PASS, purge via `PURGE` with `X-Purge-Token`, CI/CD baseline, and frontend SPA).
 
 ## Prerequisites
 
@@ -17,8 +17,11 @@ curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/b
 ```
 
 * Docker
+* Node.js 24+ and pnpm (for web frontend)
 
 ## Local dev
+
+### API
 
 ```sh
 make api-init
@@ -39,6 +42,16 @@ curl -i -X POST http://localhost:3000/admin/product/prod-001 \
   -d '{"name":"Updated Name","inStock":false}'
 ```
 
+### Web Frontend
+
+```sh
+make web-install
+make web-generate-client  # Generate TypeScript client from OpenAPI spec
+make web-run              # Dev server at http://localhost:5173
+make web-build            # Production build
+make web-preview          # Preview production build
+```
+
 ## Local Docker dev
 
 **Note**: Docker Compose Varnish setup may encounter DNS resolution issues in certain CI environments. See [docs/docker-compose-issues.md](docs/docker-compose-issues.md) for details. For full Varnish functionality, use the Kubernetes deployment.
@@ -46,6 +59,9 @@ curl -i -X POST http://localhost:3000/admin/product/prod-001 \
 ```sh
 make docker-up
 make docker-logs
+
+# Access web frontend (Docker host port 8080 -> web container port 80)
+open http://localhost:8080
 
 # Access via Varnish (Docker host port 6081 -> Varnish container port 80)
 curl -i http://localhost:6081/
@@ -144,7 +160,7 @@ make k8s-local-down
 Deploy to local Kubernetes:
 
 ```sh
-# Deploy API and Varnish
+# Deploy API, Varnish, and Web
 make k8s-local-up
 
 # Wait for rollout
@@ -152,6 +168,9 @@ make k8s-wait
 
 # Check status
 make k8s-status
+
+# Port-forward Web (access at http://localhost:8080)
+make k8s-port-forward-web
 
 # Port-forward Varnish (access at http://localhost:6081)
 make k8s-port-forward-varnish
