@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	api "edge-cache-lab/apps/api/internal/api"
 
 	"github.com/stretchr/testify/require"
 )
@@ -28,57 +32,182 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 	}
 }
 
-func TestHelloWorld(t *testing.T) {
-	// Create a New Server Struct
+func newServer() *Server {
 	s := CreateNewServer()
-	// Mount Handlers
 	s.MountHandlers()
-
-	// Create a New Request
-	req, _ := http.NewRequest("GET", "/", nil)
-
-	// Execute Request
-	response := executeRequest(req, s)
-
-	// Check the response code
-	checkResponseCode(t, http.StatusOK, response.Code)
-
-	// We can use testify/require to assert values, as it is more convenient
-	require.Equal(t, "Hello World!", response.Body.String())
-}
-
-type healthPayload struct {
-	Status    string `json:"status"`
-	Timestamp string `json:"timestamp"`
-	Instance  string `json:"instance"`
-	RequestID string `json:"request_id"`
+	return s
 }
 
 func TestHealth(t *testing.T) {
-	s := CreateNewServer()
-	s.MountHandlers()
-
 	t.Setenv("INSTANCE_NAME", "test-instance")
+	s := newServer()
 	req, _ := http.NewRequest("GET", "/health", nil)
 	response := executeRequest(req, s)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 	require.Equal(t, "application/json", response.Header().Get("Content-Type"))
+	require.NotEmpty(t, response.Header().Get("X-Request-Id"))
 
-	var payload healthPayload
+	var payload api.Health
 	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
 
-	if payload.Status != "ok" {
-		t.Fatalf("expected status ok, got %q", payload.Status)
-	}
+	require.Equal(t, "ok", payload.Status)
+	require.Equal(t, "test-instance", payload.Instance)
+	require.False(t, payload.Timestamp.IsZero())
+	require.NotNil(t, payload.RequestId)
+	require.NotEmpty(t, *payload.RequestId)
+}
 
-	if payload.RequestID == "" {
-		t.Fatalf("expected request_id to be set")
-	}
+func TestHomepage(t *testing.T) {
+	s := newServer()
 
-	if payload.Instance != "test-instance" {
-		t.Fatalf("expected instance test-instance, got %q", payload.Instance)
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Set("User-Agent", "contract-test")
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	requireCacheHeaders(t, response)
+
+	var payload api.Homepage
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, "Edge Cache Lab Store", payload.Title)
+	require.False(t, payload.Meta.Timestamp.IsZero())
+	require.NotEmpty(t, payload.Meta.Instance)
+	require.NotEmpty(t, payload.Meta.RequestId)
+	require.NotNil(t, payload.Meta.HeadersReceived)
+	require.Equal(t, "contract-test", (*payload.Meta.HeadersReceived)["User-Agent"])
+}
+
+func TestListCategories(t *testing.T) {
+	s := newServer()
+
+	req, _ := http.NewRequest("GET", "/category", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	requireCacheHeaders(t, response)
+
+	var payload struct {
+		Categories []api.Category   `json:"categories"`
+		Meta       api.ResponseMeta `json:"meta"`
 	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.NotEmpty(t, payload.Categories)
+	require.False(t, payload.Meta.Timestamp.IsZero())
+	require.NotEmpty(t, payload.Meta.Instance)
+	require.NotEmpty(t, payload.Meta.RequestId)
+}
+
+func TestGetProduct(t *testing.T) {
+	s := newServer()
+
+	req, _ := http.NewRequest("GET", "/product/prod-001", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	requireCacheHeaders(t, response)
+
+	var payload api.Product
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, "prod-001", payload.Id)
+	require.Equal(t, "Wireless Headphones", payload.Name)
+}
+
+func TestGetProductNotFound(t *testing.T) {
+	s := newServer()
+
+	req, _ := http.NewRequest("GET", "/product/unknown", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusNotFound, response.Code)
+	require.NotEmpty(t, response.Header().Get("X-Request-Id"))
+
+	var payload api.Error
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, "not_found", payload.Error)
+	require.NotEmpty(t, payload.RequestId)
+}
+
+func TestCartNoCache(t *testing.T) {
+	s := newServer()
+
+	req, _ := http.NewRequest("GET", "/cart", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, "no-store, no-cache, must-revalidate", response.Header().Get("Cache-Control"))
+
+	var payload api.Cart
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.NotEmpty(t, payload.Id)
+	require.False(t, payload.Meta.Timestamp.IsZero())
+}
+
+func TestAccountNoCache(t *testing.T) {
+	s := newServer()
+
+	req, _ := http.NewRequest("GET", "/account", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, "no-store, no-cache, must-revalidate", response.Header().Get("Cache-Control"))
+
+	var payload api.Account
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, "user-001", payload.Id)
+	require.False(t, payload.Meta.Timestamp.IsZero())
+}
+
+func TestUpdateProduct(t *testing.T) {
+	s := newServer()
+
+	body, err := json.Marshal(api.ProductUpdate{
+		Name:    stringPtr("Updated Name"),
+		InStock: boolPtr(false),
+	})
+	require.NoError(t, err)
+
+	req, _ := http.NewRequest("POST", "/admin/product/prod-001", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	require.Equal(t, "product:prod-001", response.Header().Get("X-Purge-Tags"))
+
+	var payload api.Product
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, "Updated Name", payload.Name)
+	require.False(t, payload.InStock)
+}
+
+func TestRequestLogging(t *testing.T) {
+	var buffer bytes.Buffer
+	original := log.Writer()
+	log.SetOutput(&buffer)
+	defer log.SetOutput(original)
+
+	s := newServer()
+	req, _ := http.NewRequest("GET", "/health", nil)
+	response := executeRequest(req, s)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	logOutput := buffer.String()
+	require.Contains(t, logOutput, "request_id=")
+	require.Contains(t, logOutput, "latency_ms=")
+}
+
+func requireCacheHeaders(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+	require.Equal(t, "public, max-age=60", response.Header().Get("Cache-Control"))
+	require.Equal(t, "max-age=120", response.Header().Get("Surrogate-Control"))
+	require.NotEmpty(t, response.Header().Get("ETag"))
+	require.Equal(t, "MISS", response.Header().Get("X-Cache"))
+	require.NotEmpty(t, response.Header().Get("X-Request-Id"))
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
