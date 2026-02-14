@@ -31,12 +31,11 @@ jobs:
       - name: OpenAPI validate
         run: make openapi-validate
 
-      - name: OpenAPI codegen
-        run: make openapi
-
       - name: OpenAPI drift check
         run: make openapi-diff
 
+      - name: OpenAPI codegen
+        run: make openapi
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:

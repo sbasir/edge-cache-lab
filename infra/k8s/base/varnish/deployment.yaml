@@ -13,7 +13,7 @@ spec:
         app: varnish
     spec:
       securityContext:
-        runAsUser: 1000    
+        runAsUser: 1000
       containers:
         - name: varnish
           image: varnish:8-alpine
@@ -36,17 +36,21 @@ spec:
           resources:
             limits:
               cpu: "400m"
-              memory: "256Mi"
+              memory: "512Mi"
             requests:
               cpu: "200m"
-              memory: "128Mi"
+              memory: "256Mi"
           securityContext: 
-            readOnlyRootFilesystem: true            
+            readOnlyRootFilesystem: true
           volumeMounts:
             - name: varnish-config
               mountPath: /etc/varnish/default.vcl
               subPath: default.vcl
+            - name: varnish-workspace
+              mountPath: /var/lib/varnish          
       volumes:
         - name: varnish-config
           configMap:
             name: varnish-config
+        - name: varnish-workspace
+          emptyDir: {}

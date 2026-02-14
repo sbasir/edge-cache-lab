@@ -4,8 +4,8 @@ GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
 OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 ACT ?= act
 ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
---container-architecture linux/amd64 \
---pull=false
+	--container-architecture linux/amd64 \
+	--pull=false
 IMAGE_TAG ?= local
 
 K8S_NAMESPACE ?= edge-cache-api
@@ -106,7 +106,7 @@ openapi-diff:
 api-docker-build:
 	@docker build -t edge-cache-lab-api:$(IMAGE_TAG) apps/api
 
-app-ci: openapi-validate openapi openapi-diff api-lint api-test api-docker-build
+app-ci: openapi-validate openapi-diff api-lint api-test openapi api-docker-build
 
 .PHONY: docker-build docker-up docker-down docker-logs
 docker-build:
@@ -151,16 +151,26 @@ k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
 
 k8s-lint:
-	@echo "Linting Kubernetes manifests with kubelinter..."
-	@command -v kube-linter > /dev/null || (echo "kubelinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
+	@echo "Linting Kubernetes manifests with KubeLinter..."
+	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
 	@kube-linter lint infra/k8s
 
 .PHONY: validate-endpoints
 PORT ?= 6081
 
 validate-endpoints:
-	@echo "Validating endpoints on localhost:$(PORT)..."
+	@if kubectl -n $(K8S_NAMESPACE) get svc/varnish > /dev/null 2>&1; then \
+		echo "Detected Varnish service in Kubernetes..."; \
+		if ! lsof -i :$(PORT) > /dev/null 2>&1; then \
+			echo "✗ No process is listening on port $(PORT). Please ensure port-forwarding is set up correctly (e.g., 'make k8s-port-forward-varnish') and try again." >&2; \
+			exit 1; \
+		else \
+			echo "Port-forwarding to localhost:$(PORT) is active..."; \
+		fi; \
+	fi;
 	@set -e; \
+	echo ""; \
+	echo "✓ Validating API endpoints on http://localhost:$(PORT)"; \
 	echo "Purging cache..."; \
 	curl -s -f -X PURGE http://localhost:$(PORT)/ -H "X-Purge-Token: test-purge-token" > /dev/null 2>&1 || (echo "✗ Cache purge failed" >&2; exit 1); \
 	echo ""; \
