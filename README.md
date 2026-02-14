@@ -37,11 +37,13 @@ curl -i -X POST http://localhost:3000/admin/product/prod-001 \
 
 ## Local Docker dev
 
+**Note**: Docker Compose Varnish setup may encounter DNS resolution issues in certain CI environments. See [docs/docker-compose-issues.md](docs/docker-compose-issues.md) for details. For full Varnish functionality, use the Kubernetes deployment.
+
 ```sh
 make docker-up
 make docker-logs
 
-# Access via Varnish (port 8080)
+# Access via Varnish (port 8080) - may not work in all Docker environments
 curl -i http://localhost:8080/
 curl -i http://localhost:8080/health
 curl -i http://localhost:8080/category
@@ -68,6 +70,10 @@ make openapi
 ```
 
 Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps/api/cmd/server`.
+
+## Varnish Cache
+
+Phase 4 implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
 
 ## Kubernetes
 
