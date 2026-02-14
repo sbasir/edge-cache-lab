@@ -6,7 +6,7 @@ OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 K8S_NAMESPACE ?= edge-cache-api
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
-.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward
+.PHONY: help api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate docker-build docker-up docker-down docker-logs k8s-test-local k8s-clean-local k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish
 
 help:
 	@echo "Usage: make [target]"
@@ -36,6 +36,7 @@ help:
 	@echo "  make k8s-status                       - Get status of resources"
 	@echo "  make k8s-logs                         - Tail logs"
 	@echo "  make k8s-port-forward                 - Port-forward the API service"
+	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
 api-init:
 	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
 	go get -u github.com/go-chi/chi/v5 && \
@@ -111,3 +112,6 @@ k8s-status:
 
 k8s-logs:
 	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
+
+k8s-port-forward-varnish:
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 8080:80
