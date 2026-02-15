@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import type { Homepage } from '../api';
 import { OpenAPI } from '../api/core/OpenAPI';
 import CacheInfo from '../components/CacheInfo';
+import { fetchNoStore } from '../utils/fetchNoStore';
+import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function HomePage() {
   const [data, setData] = useState<Homepage | null>(null);
@@ -17,12 +19,8 @@ export default function HomePage() {
         setError(null);
         
         // Capture response headers by using fetch directly
-        const response = await fetch(`${OpenAPI.BASE}/`);
-        const headersObj: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headersObj[key] = value;
-        });
-        setHeaders(headersObj);
+        const response = await fetchNoStore(`${OpenAPI.BASE}/`);
+        setHeaders(headersFromResponse(response));
         
         const result = await response.json();
         setData(result);

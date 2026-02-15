@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OpenAPI } from '../api/core/OpenAPI';
+import { fetchNoStore } from '../utils/fetchNoStore';
 
 interface PurgeResponse {
   data: unknown;
@@ -21,7 +22,7 @@ export default function AdminPage() {
       setResult(null);
       setPurgeResponse(null);
       
-      const response = await fetch(
+      const response = await fetchNoStore(
         `${OpenAPI.BASE}/admin/product/${productId}`,
         {
           method: 'POST',
@@ -68,7 +69,7 @@ export default function AdminPage() {
       setResult(null);
       setPurgeResponse(null);
       
-      const response = await fetch(
+      const response = await fetchNoStore(
         `${OpenAPI.BASE}/product/${productId}`,
         {
           method: 'PURGE',

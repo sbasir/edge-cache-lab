@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Account } from '../api';
 import { OpenAPI } from '../api/core/OpenAPI';
 import CacheInfo from '../components/CacheInfo';
+import { fetchNoStore } from '../utils/fetchNoStore';
+import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function AccountPage() {
   const [account, setAccount] = useState<Account | null>(null);
@@ -15,12 +17,8 @@ export default function AccountPage() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${OpenAPI.BASE}/account`);
-        const headersObj: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headersObj[key] = value;
-        });
-        setHeaders(headersObj);
+        const response = await fetchNoStore(`${OpenAPI.BASE}/account`);
+        setHeaders(headersFromResponse(response));
         
         const result = await response.json();
         setAccount(result);

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ResponseMeta } from '../api';
 
 interface CacheInfoProps {
@@ -7,6 +8,8 @@ interface CacheInfoProps {
 
 export default function CacheInfo({ meta, headers }: CacheInfoProps) {
   if (!meta && !headers) return null;
+
+  const [isMetaOpen, setIsMetaOpen] = useState(false);
 
   const xCache = headers?.['x-cache'] || headers?.['X-Cache'] || 'N/A';
   const cacheControl = headers?.['cache-control'] || headers?.['Cache-Control'];
@@ -44,8 +47,18 @@ export default function CacheInfo({ meta, headers }: CacheInfoProps) {
       </div>
       {meta && (
         <div className="response-meta">
-          <h4>Response Metadata</h4>
-          <pre>{JSON.stringify(meta, null, 2)}</pre>
+          <button
+            type="button"
+            className="response-meta-toggle"
+            onClick={() => setIsMetaOpen((open) => !open)}
+            aria-expanded={isMetaOpen}
+          >
+            <span className="toggle-icon" aria-hidden="true">
+              {isMetaOpen ? 'v' : '>'}
+            </span>
+            Response Metadata
+          </button>
+          {isMetaOpen && <pre>{JSON.stringify(meta, null, 2)}</pre>}
         </div>
       )}
     </div>

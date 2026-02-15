@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Category } from '../api';
 import { OpenAPI } from '../api/core/OpenAPI';
 import CacheInfo from '../components/CacheInfo';
+import { fetchNoStore } from '../utils/fetchNoStore';
+import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function CategoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -15,12 +17,8 @@ export default function CategoryPage() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${OpenAPI.BASE}/category`);
-        const headersObj: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headersObj[key] = value;
-        });
-        setHeaders(headersObj);
+        const response = await fetchNoStore(`${OpenAPI.BASE}/category`);
+        setHeaders(headersFromResponse(response));
         
         const result = await response.json();
         setCategories(result.categories || []);

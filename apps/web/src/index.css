@@ -189,10 +189,28 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
-.response-meta h4 {
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-  color: #666;
+.response-meta-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.response-meta-toggle:hover {
+  text-decoration: underline;
+}
+
+.toggle-icon {
+  display: inline-block;
+  width: 1rem;
+  text-align: center;
+  font-family: 'Courier New', monospace;
 }
 
 .response-meta pre {

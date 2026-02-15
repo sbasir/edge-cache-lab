@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import type { Product } from '../api';
 import { OpenAPI } from '../api/core/OpenAPI';
 import CacheInfo from '../components/CacheInfo';
+import { fetchNoStore } from '../utils/fetchNoStore';
+import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,12 +21,8 @@ export default function ProductPage() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${OpenAPI.BASE}/product/${id}`);
-        const headersObj: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headersObj[key] = value;
-        });
-        setHeaders(headersObj);
+        const response = await fetchNoStore(`${OpenAPI.BASE}/product/${id}`);
+        setHeaders(headersFromResponse(response));
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
