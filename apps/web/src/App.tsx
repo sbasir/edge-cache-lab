@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
@@ -17,7 +17,6 @@ const getInitialDarkMode = (): boolean => {
 
 function AppContent() {
   const location = useLocation();
-  const navigate = useNavigate();
   
   const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [apiBaseUrl, setApiBaseUrl] = useState(
@@ -36,9 +35,8 @@ function AppContent() {
   const handleNavClick = (path: string, e: React.MouseEvent) => {
     if (location.pathname === path) {
       e.preventDefault();
-      // Force reload by navigating away and back
-      navigate('/reload-temp');
-      setTimeout(() => navigate(path), 0);
+      // Force reload to refresh cache status
+      window.location.reload();
     }
   };
 
@@ -126,7 +124,6 @@ function AppContent() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/admin" element={<AdminPage />} />
-          <Route path="/reload-temp" element={<div style={{ display: 'none' }} />} />
         </Routes>
       </main>
 

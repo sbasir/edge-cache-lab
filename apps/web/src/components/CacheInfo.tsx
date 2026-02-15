@@ -9,12 +9,15 @@ interface CacheInfoProps {
 export default function CacheInfo({ meta, headers }: CacheInfoProps) {
   const [isMetaOpen, setIsMetaOpen] = useState(false);
 
-  if (!meta && !headers) return null;
-
+  // Early return after hooks to comply with Rules of Hooks
+  const hasData = meta || headers;
+  
   const xCache = headers?.['x-cache'] || headers?.['X-Cache'] || 'N/A';
   const cacheControl = headers?.['cache-control'] || headers?.['Cache-Control'];
   const etag = headers?.['etag'] || headers?.['ETag'];
   const requestId = headers?.['x-request-id'] || headers?.['X-Request-Id'];
+
+  if (!hasData) return null;
 
   return (
     <div className="cache-info">
