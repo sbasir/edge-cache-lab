@@ -101,6 +101,7 @@ export default function AdminPage() {
         <div className="content-section">
           <div className="admin-form">
             <h3>Update Product</h3>
+            <p className="form-hint">Updates are in-memory for demo purposes and will reset on API restart.</p>
             
             <div className="form-group">
               <label htmlFor="product-id">Product ID:</label>
@@ -144,6 +145,7 @@ export default function AdminPage() {
                 onChange={(e) => setPurgeToken(e.target.value)}
                 placeholder="test-purge-token"
               />
+              <p className="form-hint">Required for both update and PURGE. The Varnish demo does not accept X-Purge-Tags as a token.</p>
             </div>
 
             <div className="button-group">
@@ -178,9 +180,9 @@ export default function AdminPage() {
             <ol>
               <li>Update a product with the form above</li>
               <li>The API validates your purge token</li>
-              <li>The API returns X-Purge-Tags header</li>
-              <li>You can manually purge the cache using PURGE method</li>
-              <li>Visit the product page to see the changes and cache behavior</li>
+              <li>The API returns X-Purge-Tags for upstream CDNs (informational only)</li>
+              <li>Purge Varnish with PURGE on /product/{'{id}'} using X-Purge-Token</li>
+              <li>Visit the product page to see MISS then HIT behavior</li>
             </ol>
           </div>
         </div>

@@ -24,7 +24,7 @@ sub vcl_recv {
         
         # BAN by product ID from URL if present
         if (req.url ~ "^/product/") {
-            ban(req.url ~ "^/product/");
+            ban("obj.http.url ~ ^/product/");
             return (synth(200, "Purged"));
         }
         
@@ -57,6 +57,7 @@ sub vcl_recv {
 sub vcl_backend_response {
     # Set TTL for cacheable responses
     if (beresp.status == 200) {
+        set beresp.http.url = bereq.url;
         set beresp.ttl = 2m;
     }
 }

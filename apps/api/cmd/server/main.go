@@ -291,6 +291,8 @@ func (a *API) UpdateProduct(w http.ResponseWriter, r *http.Request, id string, p
 		product.InStock = *update.InStock
 	}
 
+	productCatalog[id] = product
+
 	w.Header().Set("X-Purge-Tags", fmt.Sprintf("product:%s", id))
 	a.writeJSON(w, r, http.StatusOK, product)
 }
