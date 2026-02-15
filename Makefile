@@ -18,12 +18,13 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "API:"
-	@echo "  api-init     - Initialize the API module"
-	@echo "  api-install  - Install API dependencies"
-	@echo "  api-run      - Run the API server"
-	@echo "  api-test     - Run tests for the API"
-	@echo "  api-lint     - Run linters for the API"
-	@echo "  api-fmt      - Format the API code"
+	@echo "  api-init            - Initialize the API module"
+	@echo "  api-install         - Install API dependencies"
+	@echo "  api-run             - Run the API server"
+	@echo "  api-test            - Run tests for the API"
+	@echo "  api-lint            - Run linters for the API"
+	@echo "  api-fmt             - Format the API code"
+	@echo "  api-docker-build    - Build the API Docker image"
 	@echo ""
 	@echo "Web:"
 	@echo "  web-install         - Install web dependencies"
@@ -35,19 +36,15 @@ help:
 	@echo "  web-docker-build    - Build web Docker image"
 	@echo ""
 	@echo "OpenAPI:"
-	@echo "  openapi          - Generate Go code from OpenAPI spec"
-	@echo "  openapi-validate - Validate OpenAPI spec"
-	@echo "  openapi-diff     - Fail if generated OpenAPI code differs"
-	@echo ""
-	@echo "CI:"
-	@echo "  app-ci           - Run CI checks locally"
-	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
+	@echo "  openapi             - Generate Go code from OpenAPI spec"
+	@echo "  openapi-validate    - Validate OpenAPI spec"
+	@echo "  openapi-diff        - Fail if generated OpenAPI code differs"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker-build - Build the Docker images"
-	@echo "  docker-up    - Start the application using Docker Compose"
-	@echo "  docker-down  - Stop the application and remove containers"
-	@echo "  docker-logs  - Follow the logs of the application"
+	@echo "  docker-build        - Build the Docker images"
+	@echo "  docker-up           - Start the application using Docker Compose"
+	@echo "  docker-down         - Stop the application and remove containers"
+	@echo "  docker-logs         - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
 	@echo "  make k8s-varnish-vcl-sync             - Generate Kubernetes VCL from template"
@@ -60,10 +57,18 @@ help:
 	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
 	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
 	@echo ""
+	@echo "CI:"
+	@echo "  app-ci           - Run API CI checks locally"
+	@echo "  web-ci           - Run Web CI checks locally"
+	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
+	@echo "  gh-act-k8s-ci    - Run Kubernetes CI workflow with act"
+	@echo "  gh-act-web-ci    - Run Web CI workflow with act"
+	@echo "  gh-act-all-ci    - Run all GitHub Actions workflows with act"
+	@echo ""
 	@echo "Testing:"
 	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
 
-.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci web-install web-generate-client web-run web-build web-preview web-lint web-docker-build
+.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
 
 api-init:
 	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
@@ -92,6 +97,34 @@ api-lint:
 api-fmt:
 	@cd apps/api && $(GOLANGCI) fmt
 
+openapi:
+	@echo "Installing oapi-codegen if needed..."
+	@which $(OAPI_CODEGEN) > /dev/null || go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+	@echo "Generating Go code from OpenAPI spec..."
+	@mkdir -p apps/api/internal/api
+	@$(OAPI_CODEGEN) -generate types,chi-server \
+		-package api \
+		openapi/api.yaml > apps/api/internal/api/api.gen.go
+	@echo "✓ Generated apps/api/internal/api/api.gen.go"
+
+openapi-validate:
+	@echo "Validating OpenAPI spec..."
+	@$(OAPI_CODEGEN) -generate types \
+		-package api \
+		openapi/api.yaml > /dev/null 2>&1 && echo "✓ OpenAPI spec is valid" || (echo "✗ OpenAPI spec validation failed" && exit 1)
+
+openapi-diff:
+	@echo "Checking for OpenAPI codegen drift..."
+	@git diff --exit-code -- apps/api/internal/api/api.gen.go
+	@echo "✓ OpenAPI codegen is in sync"
+
+api-docker-build:
+	@docker build -t edge-cache-lab-api:$(IMAGE_TAG) apps/api
+
+app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build
+
+.PHONY: web-install web-generate-client web-run web-build web-preview web-lint web-docker-build
+
 web-install:
 	@echo "Installing web dependencies..."
 	@cd apps/web && corepack enable && corepack prepare pnpm@10.28.1 --activate && pnpm install
@@ -119,33 +152,10 @@ web-lint:
 web-docker-build:
 	@docker build -t edge-cache-lab-web:$(IMAGE_TAG) apps/web
 
-openapi:
-	@echo "Installing oapi-codegen if needed..."
-	@which $(OAPI_CODEGEN) > /dev/null || go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
-	@echo "Generating Go code from OpenAPI spec..."
-	@mkdir -p apps/api/internal/api
-	@$(OAPI_CODEGEN) -generate types,chi-server \
-		-package api \
-		openapi/api.yaml > apps/api/internal/api/api.gen.go
-	@echo "✓ Generated apps/api/internal/api/api.gen.go"
-
-openapi-validate:
-	@echo "Validating OpenAPI spec..."
-	@$(OAPI_CODEGEN) -generate types \
-		-package api \
-		openapi/api.yaml > /dev/null 2>&1 && echo "✓ OpenAPI spec is valid" || (echo "✗ OpenAPI spec validation failed" && exit 1)
-
-openapi-diff:
-	@echo "Checking for OpenAPI codegen drift..."
-	@git diff --exit-code -- apps/api/internal/api/api.gen.go
-	@echo "✓ OpenAPI codegen is in sync"
-
-api-docker-build:
-	@docker build -t edge-cache-lab-api:$(IMAGE_TAG) apps/api
-
-app-ci: openapi-validate openapi-diff api-lint api-test openapi api-docker-build
+web-ci: web-build web-lint web-generate-client web-docker-build
 
 .PHONY: docker-build docker-up docker-down docker-logs
+
 docker-build:
 	@docker compose build
 
@@ -241,10 +251,18 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
 
 gh-act-k8s-ci:
 	@$(ACT) -W .github/workflows/k8s-ci.yaml $(ACT_FLAGS)
+
+gh-act-web-ci:
+	@$(ACT) -W .github/workflows/web-ci.yaml $(ACT_FLAGS)
+
+gh-act-all-ci:
+	@$(MAKE) gh-act-app-ci
+	@$(MAKE) gh-act-k8s-ci
+	@$(MAKE) gh-act-web-ci
