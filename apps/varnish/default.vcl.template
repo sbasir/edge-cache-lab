@@ -9,6 +9,11 @@ backend default {
 }
 
 sub vcl_recv {
+    # Handle CORS preflight for PURGE method
+    if (req.method == "OPTIONS" && req.http.Origin) {
+        return (synth(204, "No Content"));
+    }
+
     # Handle PURGE requests (invalidation)
     if (req.method == "PURGE") {
         # Validate purge token
@@ -57,6 +62,15 @@ sub vcl_backend_response {
 }
 
 sub vcl_deliver {
+    # Add CORS headers to all responses
+    if (req.http.Origin) {
+        set resp.http.Access-Control-Allow-Origin = req.http.Origin;
+        set resp.http.Vary = "Origin";
+        set resp.http.Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS,PURGE";
+        set resp.http.Access-Control-Allow-Headers = "Content-Type,Authorization,X-Purge-Token";
+        set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags,X-Cache-Hits";
+    }
+
     # Add X-Cache header to indicate cache status
     if (req.http.X-Pass) {
         set resp.http.X-Cache = "PASS";
@@ -68,4 +82,23 @@ sub vcl_deliver {
 
     # Add hit count for debugging
     set resp.http.X-Cache-Hits = obj.hits;
+}
+
+sub vcl_synth {
+    # Handle CORS for synthetic responses (like PURGE and OPTIONS)
+    if (req.http.Origin) {
+        set resp.http.Access-Control-Allow-Origin = req.http.Origin;
+        set resp.http.Vary = "Origin";
+        set resp.http.Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS,PURGE";
+        set resp.http.Access-Control-Allow-Headers = "Content-Type,Authorization,X-Purge-Token";
+        set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags";
+    }
+
+    # Handle OPTIONS preflight
+    if (req.method == "OPTIONS" && resp.status == 204) {
+        set resp.http.Content-Length = "0";
+        return (deliver);
+    }
+
+    return (deliver);
 }

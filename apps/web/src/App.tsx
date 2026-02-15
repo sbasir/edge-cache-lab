@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
@@ -8,68 +8,154 @@ import AccountPage from './pages/AccountPage';
 import AdminPage from './pages/AdminPage';
 import { OpenAPI } from './api/core/OpenAPI';
 
-function App() {
+// Get initial dark mode from localStorage (outside component)
+const getInitialDarkMode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const saved = localStorage.getItem('darkMode');
+  return saved ? JSON.parse(saved) : false;
+};
+
+function AppContent() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [apiBaseUrl, setApiBaseUrl] = useState(
     import.meta.env.VITE_API_BASE_URL || 'http://localhost:6081'
   );
 
-  // Configure OpenAPI client
   useEffect(() => {
     OpenAPI.BASE = apiBaseUrl;
   }, [apiBaseUrl]);
 
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    document.documentElement.classList.toggle('dark-mode', darkMode);
+  }, [darkMode]);
+
+  const handleNavClick = (path: string, e: React.MouseEvent) => {
+    if (location.pathname === path) {
+      e.preventDefault();
+      // Force reload by navigating away and back
+      navigate('/reload-temp');
+      setTimeout(() => navigate(path), 0);
+    }
+  };
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="container">
+          <div className="header-content">
+            <Link to="/" className="logo" onClick={(e) => handleNavClick('/', e)}>
+              <h1>🛒 Edge Cache Lab</h1>
+              <span className="tagline">CDN → Varnish → App</span>
+            </Link>
+            <nav className="nav">
+              <Link 
+                to="/" 
+                className={location.pathname === '/' ? 'active' : ''}
+                onClick={(e) => handleNavClick('/', e)}
+              >
+                Home
+              </Link>
+              <Link 
+                to="/categories" 
+                className={location.pathname === '/categories' ? 'active' : ''}
+                onClick={(e) => handleNavClick('/categories', e)}
+              >
+                Categories
+              </Link>
+              <Link 
+                to="/cart" 
+                className={location.pathname === '/cart' ? 'active' : ''}
+                onClick={(e) => handleNavClick('/cart', e)}
+              >
+                Cart
+              </Link>
+              <Link 
+                to="/account" 
+                className={location.pathname === '/account' ? 'active' : ''}
+                onClick={(e) => handleNavClick('/account', e)}
+              >
+                Account
+              </Link>
+              <Link 
+                to="/admin" 
+                className={location.pathname === '/admin' ? 'active' : ''}
+                onClick={(e) => handleNavClick('/admin', e)}
+              >
+                Admin
+              </Link>
+            </nav>
+            <button 
+              className="theme-toggle" 
+              onClick={() => setDarkMode(!darkMode)}
+              aria-label="Toggle dark mode"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
+          <div className="api-config">
+            <label htmlFor="api-url">API URL:</label>
+            <input
+              id="api-url"
+              type="text"
+              value={apiBaseUrl}
+              onChange={(e) => setApiBaseUrl(e.target.value)}
+              placeholder="http://localhost:6081"
+            />
+            <span className="api-status">
+              {location.pathname.startsWith('/product') && '📦 Product'}
+              {location.pathname === '/categories' && '📂 Categories'}
+              {location.pathname === '/cart' && '🛒 Cart'}
+              {location.pathname === '/account' && '👤 Account'}
+              {location.pathname === '/admin' && '⚙️ Admin'}
+              {location.pathname === '/' && '🏠 Home'}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="main">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/categories" element={<CategoryPage />} />
+          <Route path="/product/:id" element={<ProductPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/reload-temp" element={<div style={{ display: 'none' }} />} />
+        </Routes>
+      </main>
+
+      <footer className="footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-section">
+              <h3>Edge Cache Lab</h3>
+              <p>Demonstrating production-like CDN caching behavior</p>
+            </div>
+            <div className="footer-section">
+              <h3>Learn More</h3>
+              <p>Explore cache headers, HIT/MISS/PASS states, and purge operations</p>
+            </div>
+            <div className="footer-section">
+              <h3>Tech Stack</h3>
+              <p>Varnish • Go • React • TypeScript • Kubernetes</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function App() {
   return (
     <Router>
-      <div className="app">
-        <header className="header">
-          <div className="container">
-            <div className="header-content">
-              <Link to="/" className="logo">
-                <h1>🛒 Edge Cache Lab</h1>
-              </Link>
-              <nav className="nav">
-                <Link to="/">Home</Link>
-                <Link to="/categories">Categories</Link>
-                <Link to="/cart">Cart</Link>
-                <Link to="/account">Account</Link>
-                <Link to="/admin">Admin</Link>
-              </nav>
-            </div>
-            <div className="api-config">
-              <label htmlFor="api-url">API URL:</label>
-              <input
-                id="api-url"
-                type="text"
-                value={apiBaseUrl}
-                onChange={(e) => {
-                  setApiBaseUrl(e.target.value);
-                  OpenAPI.BASE = e.target.value;
-                }}
-                placeholder="http://localhost:6081"
-              />
-            </div>
-          </div>
-        </header>
-
-        <main className="main">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/categories" element={<CategoryPage />} />
-            <Route path="/product/:id" element={<ProductPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/account" element={<AccountPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-          </Routes>
-        </main>
-
-        <footer className="footer">
-          <div className="container">
-            <p>
-              Edge Cache Lab - Demonstrating CDN → Varnish → App cache behavior
-            </p>
-          </div>
-        </footer>
-      </div>
+      <AppContent />
     </Router>
   );
 }

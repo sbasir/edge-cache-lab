@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import type { Homepage } from '../api';
 import { OpenAPI } from '../api/core/OpenAPI';
 import CacheInfo from '../components/CacheInfo';
-import { fetchNoStore } from '../utils/fetchNoStore';
-import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function HomePage() {
   const [data, setData] = useState<Homepage | null>(null);
@@ -18,9 +16,12 @@ export default function HomePage() {
         setLoading(true);
         setError(null);
         
-        // Capture response headers by using fetch directly
-        const response = await fetchNoStore(`${OpenAPI.BASE}/`);
-        setHeaders(headersFromResponse(response));
+        const response = await fetch(`${OpenAPI.BASE}/`);
+        const headersObj: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headersObj[key] = value;
+        });
+        setHeaders(headersObj);
         
         const result = await response.json();
         setData(result);
@@ -40,49 +41,133 @@ export default function HomePage() {
 
   return (
     <div className="page">
+      <div className="hero-section">
+        <div className="container">
+          <div className="hero-content">
+            <h1 className="hero-title">
+              <span className="gradient-text">Edge Cache Lab</span>
+            </h1>
+            <p className="hero-subtitle">
+              Experience Production-Grade CDN Caching in Action
+            </p>
+            <p className="hero-description">
+              Interactive demonstration of multi-layer cache behavior: CDN → Varnish → Application
+            </p>
+            <div className="hero-actions">
+              <Link to="/categories" className="btn-hero">
+                Explore Products
+              </Link>
+              <Link to="/admin" className="btn-hero-secondary">
+                Try Admin Panel
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="container">
-        <h2>🏠 Home Page</h2>
+        <CacheInfo meta={data.meta} headers={headers} />
 
-        <div className="page-layout">
-          <div className="page-main">
-            <div className="content-section">
-              <h3>Welcome to Edge Cache Lab</h3>
-              <p>{data.title}</p>
-              
-              {data.featured && data.featured.length > 0 && (
-                <div className="products-grid">
-                  <h4>Featured Products</h4>
-                  <div className="products">
-                    {data.featured.map((product) => (
-                      <Link key={product.id} to={`/product/${product.id}`} className="product-card">
-                        <h5>{product.name}</h5>
-                        <p className="price">${product.price}</p>
-                        <span className={`stock ${product.inStock ? 'in-stock' : 'out-of-stock'}`}>
-                          {product.inStock ? '✓ In Stock' : '✗ Out of Stock'}
-                        </span>
-                      </Link>
-                    ))}
+        <div className="features-grid">
+          <div className="feature-card">
+            <div className="feature-icon">⚡</div>
+            <h3>Cacheable Pages</h3>
+            <p>Home, Categories, and Product pages show HIT/MISS behavior</p>
+            <div className="feature-demo">
+              <Link to="/product/prod-001" className="feature-link">
+                Try Product Page →
+              </Link>
+            </div>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">🚫</div>
+            <h3>Non-Cacheable Pages</h3>
+            <p>Cart and Account always bypass cache (PASS status)</p>
+            <div className="feature-demo">
+              <Link to="/cart" className="feature-link">
+                View Cart →
+              </Link>
+            </div>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">🔄</div>
+            <h3>Cache Purge</h3>
+            <p>Admin panel demonstrates cache invalidation workflows</p>
+            <div className="feature-demo">
+              <Link to="/admin" className="feature-link">
+                Admin Panel →
+              </Link>
+            </div>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">📊</div>
+            <h3>Real-Time Metrics</h3>
+            <p>See X-Cache headers, ETags, and request IDs on every page</p>
+            <div className="feature-demo">
+              <span className="feature-badge">Live Data</span>
+            </div>
+          </div>
+        </div>
+
+        {data.featured && data.featured.length > 0 && (
+          <div className="products-section">
+            <h2 className="section-title">Featured Products</h2>
+            <p className="section-subtitle">Click any product to see cache behavior in action</p>
+            <div className="products">
+              {data.featured.map((product) => (
+                <Link key={product.id} to={`/product/${product.id}`} className="product-card">
+                  <div className="product-image-placeholder">
+                    {product.name.charAt(0)}
                   </div>
-                </div>
-              )}
+                  <div className="product-details">
+                    <h5>{product.name}</h5>
+                    <p className="product-slug">{product.slug}</p>
+                    <p className="price">${product.price}</p>
+                    <span className={`stock ${product.inStock ? 'in-stock' : 'out-of-stock'}`}>
+                      {product.inStock ? '✓ In Stock' : '✗ Out of Stock'}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
-              <div className="info-box">
-                <h4>ℹ️ About This Demo</h4>
-                <p>
-                  This application demonstrates cache behavior through multiple layers:
-                </p>
-                <ul>
-                  <li><strong>Cacheable pages:</strong> Home, Categories, Product Details</li>
-                  <li><strong>Non-cacheable pages:</strong> Cart, Account</li>
-                  <li><strong>Cache headers:</strong> X-Cache shows HIT/MISS/PASS status</li>
-                  <li><strong>Admin actions:</strong> Trigger cache purges</li>
-                </ul>
+        <div className="info-section">
+          <h2 className="section-title">How It Works</h2>
+          <div className="info-steps">
+            <div className="info-step">
+              <div className="step-number">1</div>
+              <div className="step-content">
+                <h4>First Request</h4>
+                <p>Visit a product page - you'll see <strong>X-Cache: MISS</strong> as content is fetched from the origin</p>
+              </div>
+            </div>
+            <div className="info-step">
+              <div className="step-number">2</div>
+              <div className="step-content">
+                <h4>Cache Hit</h4>
+                <p>Refresh the page - now you see <strong>X-Cache: HIT</strong> as Varnish serves from cache</p>
+              </div>
+            </div>
+            <div className="info-step">
+              <div className="step-number">3</div>
+              <div className="step-content">
+                <h4>Cache Bypass</h4>
+                <p>Visit Cart or Account - these show <strong>X-Cache: PASS</strong> and never cache</p>
+              </div>
+            </div>
+            <div className="info-step">
+              <div className="step-number">4</div>
+              <div className="step-content">
+                <h4>Cache Purge</h4>
+                <p>Use Admin panel to update products and purge cache - watch the cache reset</p>
               </div>
             </div>
           </div>
-          <aside className="page-aside">
-            <CacheInfo meta={data.meta} headers={headers} />
-          </aside>
         </div>
       </div>
     </div>
