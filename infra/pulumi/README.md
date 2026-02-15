@@ -7,6 +7,7 @@ Automates AWS infrastructure for k3s cluster running edge-cache-lab.
 * Pulumi CLI (`brew install pulumi` or https://www.pulumi.com/docs/install/)
 * AWS CLI configured with credentials
 * Node.js 18+
+* pnpm (`npm install -g pnpm` or https://pnpm.io/installation)
 
 ## Quick Start
 
@@ -15,7 +16,7 @@ Automates AWS infrastructure for k3s cluster running edge-cache-lab.
 cd infra/pulumi
 
 # Install dependencies
-npm install
+pnpm install
 
 # Initialize stack (first time only)
 pulumi stack init dev

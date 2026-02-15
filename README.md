@@ -172,7 +172,7 @@ Deploy k3s cluster on AWS spot instance with automated edge-cache-lab deployment
 ```sh
 # Initialize (first time)
 cd infra/pulumi
-npm install
+pnpm install
 pulumi stack init dev
 pulumi config set aws:region us-east-1
 

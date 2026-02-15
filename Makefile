@@ -219,7 +219,7 @@ gh-act-k8s-ci:
 .PHONY: infra-init infra-preview infra-up infra-status infra-down infra-ssm-connect infra-kubeconfig
 
 infra-init:
-	@cd infra/pulumi && npm install
+	@cd infra/pulumi && pnpm install
 
 infra-preview:
 	@cd infra/pulumi && pulumi preview
