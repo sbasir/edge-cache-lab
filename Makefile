@@ -56,7 +56,7 @@ help:
 	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
 	@echo "  make k8s-status                       - Get status of resources"
 	@echo "  make k8s-logs                         - Tail logs"
-	@echo "  make k8s-port-forward                 - Port-forward the API service"
+	@echo "  make k8s-port-forward-api             - Port-forward the API service"
 	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
 	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
 	@echo ""
@@ -158,7 +158,7 @@ docker-down:
 docker-logs:
 	@docker compose logs -f --tail=100
 
-.PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish k8s-lint
+.PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward-api k8s-port-forward-varnish k8s-lint
 
 k8s-varnish-vcl-sync:
 	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
@@ -167,9 +167,6 @@ k8s-local-up: k8s-varnish-vcl-sync
 	@docker build -t edge-cache-lab-api:local apps/api
 	@docker build -t edge-cache-lab-web:local apps/web
 	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
-
-k8s-port-forward:
-	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
 
 k8s-local-down:
 	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
@@ -185,6 +182,9 @@ k8s-status:
 
 k8s-logs:
 	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
+
+k8s-port-forward-api:
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
 
 k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
