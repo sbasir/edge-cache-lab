@@ -7,9 +7,9 @@ interface CacheInfoProps {
 }
 
 export default function CacheInfo({ meta, headers }: CacheInfoProps) {
-  if (!meta && !headers) return null;
-
   const [isMetaOpen, setIsMetaOpen] = useState(false);
+
+  if (!meta && !headers) return null;
 
   const xCache = headers?.['x-cache'] || headers?.['X-Cache'] || 'N/A';
   const cacheControl = headers?.['cache-control'] || headers?.['Cache-Control'];
