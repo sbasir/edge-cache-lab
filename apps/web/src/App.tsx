@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
@@ -51,9 +52,9 @@ function AppContent() {
             </Link>
             <nav className="nav">
               <Link 
-                to="/" 
-                className={location.pathname === '/' ? 'active' : ''}
-                onClick={(e) => handleNavClick('/', e)}
+                to="/home" 
+                className={location.pathname === '/home' ? 'active' : ''}
+                onClick={(e) => handleNavClick('/home', e)}
               >
                 Home
               </Link>
@@ -95,30 +96,13 @@ function AppContent() {
               {darkMode ? '☀️' : '🌙'}
             </button>
           </div>
-          <div className="api-config">
-            <label htmlFor="api-url">API URL:</label>
-            <input
-              id="api-url"
-              type="text"
-              value={apiBaseUrl}
-              onChange={(e) => setApiBaseUrl(e.target.value)}
-              placeholder="http://localhost:6081"
-            />
-            <span className="api-status">
-              {location.pathname.startsWith('/product') && '📦 Product'}
-              {location.pathname === '/categories' && '📂 Categories'}
-              {location.pathname === '/cart' && '🛒 Cart'}
-              {location.pathname === '/account' && '👤 Account'}
-              {location.pathname === '/admin' && '⚙️ Admin'}
-              {location.pathname === '/' && '🏠 Home'}
-            </span>
-          </div>
         </div>
       </header>
 
       <main className="main">
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/categories" element={<CategoryPage />} />
           <Route path="/product/:id" element={<ProductPage />} />
           <Route path="/cart" element={<CartPage />} />
@@ -145,6 +129,26 @@ function AppContent() {
           </div>
         </div>
       </footer>
+      <div className="api-config-panel">
+        <div className="container">
+          <div className="api-config-card">
+            <div className="api-config-copy">
+              <h4>API Base URL</h4>
+              <p>Optional override for testing different environments or proxy setups.</p>
+            </div>
+            <div className="api-config-controls">
+              <label htmlFor="api-url">API URL</label>
+              <input
+                id="api-url"
+                type="text"
+                value={apiBaseUrl}
+                onChange={(e) => setApiBaseUrl(e.target.value)}
+                placeholder="http://localhost:6081"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

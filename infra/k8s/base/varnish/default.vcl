@@ -96,7 +96,7 @@ sub vcl_synth {
 
     # Handle OPTIONS preflight
     if (req.method == "OPTIONS" && resp.status == 204) {
-        set resp.http.Content-Length = "0";
+        synthetic("");
         return (deliver);
     }
 
