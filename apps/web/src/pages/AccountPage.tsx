@@ -41,34 +41,39 @@ export default function AccountPage() {
       <div className="container">
         <h2>👤 My Account</h2>
         
-        <div className="info-banner">
-          <strong>⚠️ Non-Cacheable Page:</strong> This page should always show X-Cache: PASS
-        </div>
-
-        <CacheInfo meta={account.meta} headers={headers} />
-
-        <div className="content-section">
-          <div className="account-info">
-            <div className="info-item">
-              <span className="label">User ID:</span>
-              <span className="value">{account.id}</span>
+        <div className="page-layout">
+          <div className="page-main">
+            <div className="info-banner">
+              <strong>⚠️ Non-Cacheable Page:</strong> This page should always show X-Cache: PASS
             </div>
-            <div className="info-item">
-              <span className="label">Email:</span>
-              <span className="value">{account.email}</span>
-            </div>
-            {account.name && (
-              <div className="info-item">
-                <span className="label">Name:</span>
-                <span className="value">{account.name}</span>
+
+            <div className="content-section">
+              <div className="account-info">
+                <div className="info-item">
+                  <span className="label">User ID:</span>
+                  <span className="value">{account.id}</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Email:</span>
+                  <span className="value">{account.email}</span>
+                </div>
+                {account.name && (
+                  <div className="info-item">
+                    <span className="label">Name:</span>
+                    <span className="value">{account.name}</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="account-actions">
-            <button className="btn-secondary">Edit Profile</button>
-            <button className="btn-secondary">Change Password</button>
+              <div className="account-actions">
+                <button className="btn-secondary">Edit Profile</button>
+                <button className="btn-secondary">Change Password</button>
+              </div>
+            </div>
           </div>
+          <aside className="page-aside">
+            <CacheInfo meta={account.meta} headers={headers} />
+          </aside>
         </div>
       </div>
     </div>

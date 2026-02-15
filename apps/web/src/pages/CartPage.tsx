@@ -43,37 +43,42 @@ export default function CartPage() {
       <div className="container">
         <h2>🛒 Shopping Cart</h2>
         
-        <div className="info-banner">
-          <strong>⚠️ Non-Cacheable Page:</strong> This page should always show X-Cache: PASS
-        </div>
+        <div className="page-layout">
+          <div className="page-main">
+            <div className="info-banner">
+              <strong>⚠️ Non-Cacheable Page:</strong> This page should always show X-Cache: PASS
+            </div>
 
-        <CacheInfo meta={cart.meta} headers={headers} />
-
-        <div className="content-section">
-          {cart.items && cart.items.length > 0 ? (
-            <>
-              <div className="cart-items">
-                {cart.items.map((item) => (
-                  <div key={item.productId} className="cart-item">
-                    <div className="cart-item-info">
-                      <h4>{item.productId}</h4>
-                      <p className="cart-item-quantity">Quantity: {item.quantity}</p>
-                    </div>
-                    <div className="cart-item-price">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </div>
+            <div className="content-section">
+              {cart.items && cart.items.length > 0 ? (
+                <>
+                  <div className="cart-items">
+                    {cart.items.map((item) => (
+                      <div key={item.productId} className="cart-item">
+                        <div className="cart-item-info">
+                          <h4>{item.productId}</h4>
+                          <p className="cart-item-quantity">Quantity: {item.quantity}</p>
+                        </div>
+                        <div className="cart-item-price">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              
-              <div className="cart-summary">
-                <h3>Total: ${total.toFixed(2)}</h3>
-                <button className="btn-primary">Proceed to Checkout</button>
-              </div>
-            </>
-          ) : (
-            <div className="empty-state">Your cart is empty</div>
-          )}
+                  
+                  <div className="cart-summary">
+                    <h3>Total: ${total.toFixed(2)}</h3>
+                    <button className="btn-primary">Proceed to Checkout</button>
+                  </div>
+                </>
+              ) : (
+                <div className="empty-state">Your cart is empty</div>
+              )}
+            </div>
+          </div>
+          <aside className="page-aside">
+            <CacheInfo meta={cart.meta} headers={headers} />
+          </aside>
         </div>
       </div>
     </div>

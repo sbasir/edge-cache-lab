@@ -39,27 +39,32 @@ export default function CategoryPage() {
     <div className="page">
       <div className="container">
         <h2>📂 Categories</h2>
-        
-        <CacheInfo headers={headers} />
 
-        <div className="content-section">
-          <div className="categories-grid">
-            {categories.map((category) => (
-              <div key={category.slug} className="category-card">
-                <h3>{category.name}</h3>
-                <p>{category.description}</p>
-                {category.productCount && category.productCount > 0 && (
-                  <p className="category-count">
-                    {category.productCount} product{category.productCount !== 1 ? 's' : ''}
-                  </p>
-                )}
+        <div className="page-layout">
+          <div className="page-main">
+            <div className="content-section">
+              <div className="categories-grid">
+                {categories.map((category) => (
+                  <div key={category.slug} className="category-card">
+                    <h3>{category.name}</h3>
+                    <p>{category.description}</p>
+                    {category.productCount && category.productCount > 0 && (
+                      <p className="category-count">
+                        {category.productCount} product{category.productCount !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {categories.length === 0 && (
-            <div className="empty-state">No categories found</div>
-          )}
+              {categories.length === 0 && (
+                <div className="empty-state">No categories found</div>
+              )}
+            </div>
+          </div>
+          <aside className="page-aside">
+            <CacheInfo headers={headers} />
+          </aside>
         </div>
       </div>
     </div>

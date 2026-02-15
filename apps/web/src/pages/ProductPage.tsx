@@ -47,33 +47,38 @@ export default function ProductPage() {
   return (
     <div className="page">
       <div className="container">
-        <div className="product-detail">
-          <h2>{product.name}</h2>
-          
-          <div className="product-info">
-            <div className="product-meta">
-              <p className="product-id">ID: {product.id}</p>
-              <p className="product-price">${product.price}</p>
-              <p className={`product-stock ${product.inStock ? 'in-stock' : 'out-of-stock'}`}>
-                {product.inStock ? '✓ In Stock' : '✗ Out of Stock'}
-              </p>
-            </div>
-            
-            {product.description && (
-              <div className="product-description">
-                <h3>Description</h3>
-                <p>{product.description}</p>
+        <div className="page-layout">
+          <div className="page-main">
+            <div className="product-detail">
+              <h2>{product.name}</h2>
+              
+              <div className="product-info">
+                <div className="product-meta">
+                  <p className="product-id">ID: {product.id}</p>
+                  <p className="product-price">${product.price}</p>
+                  <p className={`product-stock ${product.inStock ? 'in-stock' : 'out-of-stock'}`}>
+                    {product.inStock ? '✓ In Stock' : '✗ Out of Stock'}
+                  </p>
+                </div>
+                
+                {product.description && (
+                  <div className="product-description">
+                    <h3>Description</h3>
+                    <p>{product.description}</p>
+                  </div>
+                )}
               </div>
-            )}
+              
+              <div className="product-actions">
+                <button className="btn-primary" disabled={!product.inStock}>
+                  Add to Cart
+                </button>
+              </div>
+            </div>
           </div>
-
-          <CacheInfo headers={headers} />
-          
-          <div className="product-actions">
-            <button className="btn-primary" disabled={!product.inStock}>
-              Add to Cart
-            </button>
-          </div>
+          <aside className="page-aside">
+            <CacheInfo headers={headers} />
+          </aside>
         </div>
       </div>
     </div>
