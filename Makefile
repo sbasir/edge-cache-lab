@@ -6,6 +6,11 @@ ACT ?= act
 ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
 	--container-architecture linux/amd64 \
 	--pull=false
+
+AWS ?= aws
+PULUMI ?= pulumi
+REGION ?= $(AWS_REGION)
+
 IMAGE_TAG ?= local
 
 K8S_NAMESPACE ?= edge-cache-api
@@ -56,6 +61,15 @@ help:
 	@echo "  make k8s-port-forward-api             - Port-forward the API service"
 	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
 	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
+	@echo ""
+	@echo "Pulumi / Stack Commands:"
+	@echo "  pulumi-stack-init       		- Initialize Pulumi stack (defaults to 'dev')"
+	@echo "  pulumi-preview          		- Run 'pulumi preview' to inspect changes"
+	@echo "  pulumi-up               		- Deploy the stack (interactive)"
+	@echo "  pulumi-destroy          		- Destroy the Pulumi stack"
+	@echo "  pulumi-stack-output     		- Show stack outputs (plain)"
+	@echo "  pulumi-stack-output-json 		- Show stack outputs as JSON"
+	@echo "  github-actions-oidc-role 		- Create GitHub Actions IAM Role"
 	@echo ""
 	@echo "CI:"
 	@echo "  app-ci           - Run API CI checks locally"
@@ -206,6 +220,61 @@ k8s-lint:
 	@echo "Linting Kubernetes manifests with KubeLinter..."
 	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
 	@kube-linter lint infra/k8s
+
+# Pulumi and stack management targets
+
+.PHONY: pulumi-stack-init pulumi-preview pulumi-up pulumi-destroy pulumi-stack-output pulumi-stack-output-json github-actions-oidc-role
+
+pulumi-stack-init:
+	@cd infra/pulumi && \
+	$(PULUMI) stack init $(STACK)
+
+pulumi-preview:
+	@cd infra/pulumi && \
+	$(PULUMI) preview
+
+pulumi-up:
+	@cd infra/pulumi && \
+	$(PULUMI) up
+
+pulumi-destroy:
+	@cd infra/pulumi && \
+	$(PULUMI) destroy --yes
+
+pulumi-stack-output:
+	@cd infra/pulumi && \
+	$(PULUMI) stack output
+
+pulumi-stack-output-json:
+	@cd infra/pulumi && \
+	$(PULUMI) stack output --json
+
+github-actions-oidc-role:
+	@cd infra && \
+	aws cloudformation deploy \
+		--template-file github-actions-oidc-role.yaml \
+		--stack-name EdgeCacheLabGitHubActionsOIDC \
+		--color on \
+		--capabilities CAPABILITY_NAMED_IAM && \
+	aws cloudformation describe-stacks \
+		--stack-name=EdgeCacheLabGitHubActionsOIDC \
+		--query 'Stacks[0].Outputs[?OutputKey == `GitHubActionsRoleArn`].OutputValue' \
+		--output text \
+		--no-cli-pager
+
+# Instance and SSM helper targets
+
+.PHONY: ssm-deploy-logs ssm-connect
+
+ssm-deploy-logs:
+	@echo "📊 Monitoring bootstrap progress:"
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c \"tail -n 50 -f /var/log/cloud-init-output.log\""]' --region $(REGION)
+
+ssm-connect:
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --region $(REGION)
 
 .PHONY: validate-endpoints
 PORT ?= 6081

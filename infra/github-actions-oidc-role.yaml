@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub GitHubActionsDeployRole-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: "repo:sbasir/edge-cache-lab:*"
+      Policies:
+        - PolicyName: PulumiDeploymentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:*
+                  - iam:*
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                Resource: !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/edge-cache-lab/*"
+              - Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                Resource: 
+                  - !Sub "arn:aws:ec2:*:${AWS::AccountId}:instance/*"
+                  - "arn:aws:ssm:*::document/AWS-RunShellScript"
+              - Effect: Allow
+                Action:
+                  - ssm:GetCommandInvocation
+                Resource: !Sub "arn:aws:ssm:*:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/edge-cache-lab-role"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ec2.amazonaws.com
+Outputs:
+  GitHubActionsRoleArn:
+    Description: "ARN of the GitHub Actions Deploy Role"
+    Value: !GetAtt GitHubActionsRole.Arn

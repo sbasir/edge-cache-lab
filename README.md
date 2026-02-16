@@ -91,7 +91,7 @@ make openapi
 
 Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps/api/cmd/server`.
 
-## CI/CD Baseline
+## GitHub Actions CI/CD
 
 GitHub Actions runs OpenAPI validation, codegen drift checks, lint/test, and a Docker image build for the API.
 
@@ -106,6 +106,12 @@ Run the workflow with `act`:
 ```sh
 make gh-act-app-ci
 ```
+
+### Repository Secrets
+
+- `AWS_ROLE_ARN` - IAM role ARN for OIDC authentication
+  - Created using the CloudFormation template in `infra/github-actions-oidc-role.yaml` (deploy with AWS CLI or CloudFormation console). For convenience, you can run `make github-actions-oidc-role` to create the role.
+  - From the CLI: `gh secret set AWS_ROLE_ARN -r sbasir/edge-cache-lab --body "arn:aws:iam::<account-id>:role/<role-name>"`
 
 ## Varnish Cache
 

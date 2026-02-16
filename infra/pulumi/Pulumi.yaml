@@ -1,9 +1,11 @@
 name: edge-cache-lab
-description: CDN Varnish App Store Lab project
+description: Infrastructure for edge-cache-lab k3s cluster on AWS spot instance
 runtime:
   name: python
   options:
     toolchain: uv
+    typechecker: mypy
+    virtualenv: venv
 config:
   pulumi:tags:
     value:
