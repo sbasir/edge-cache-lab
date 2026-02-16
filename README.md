@@ -113,9 +113,9 @@ make gh-act-all-ci
 - **App CI** - Automated linting and testing on PRs and main branch
 - **Web CI** - Automated linting and testing on PRs and main branch
 - **K8s CI** - Validate Kubernetes manifests on PRs and main branch
-- **Pulumi Preview** - Preview infrastructure changes on PRs
-- **Pulumi Up** - Deploy infrastructure (manual trigger)
-- **Pulumi Destroy** - Destroy all infrastructure resources (manual trigger)
+- **Infra Preview** - Preview infrastructure changes on PRs
+- **Infra Up** - Deploy infrastructure (manual trigger)
+- **Infra Destroy** - Destroy all infrastructure resources (manual trigger)
 
 ### Quick Start
 

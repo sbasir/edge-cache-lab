@@ -1,21 +1,21 @@
-name: Pulumi Up
+name: Infra Preview
 
 on:
-  workflow_dispatch:
-    inputs:
-      stack:
-        description: 'Pulumi stack to deploy'
-        required: false
-        default: 'dev'
-        type: string
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'infra/pulumi/**'
+      - '.github/workflows/infra-preview.yaml'
 
 permissions:
   id-token: write  # Required for AWS OIDC
   contents: read
+  pull-requests: write  # To post preview comments
 
 jobs:
-  deploy:
-    name: Deploy Infrastructure
+  preview:
+    name: Preview Infrastructure Changes
     runs-on: ubuntu-latest
     
     steps:
@@ -30,12 +30,12 @@ jobs:
           activate-environment: true
       
       - name: Configure AWS credentials via OIDC
-        if: ${{ !env.ACT }} # skip when running under act
+        if: ${{ !env.ACT }}
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      
+
       - name: Configure AWS credentials (local) 
         if: ${{ env.ACT }} # only run under act 
         uses: aws-actions/configure-aws-credentials@v6
@@ -66,34 +66,11 @@ jobs:
           uv sync
           cp -r .venv/ venv/
       
-      - name: Deploy with Pulumi
-        if: ${{ !env.ACT || env.FORCE == 'true' }} # skip when running under act if FORCE is not true
-        id: pulumi
+      - name: Setup Pulumi
         uses: pulumi/actions@v6
         with:
-          command: up
-          stack-name: ${{ inputs.stack }}
+          command: preview
+          stack-name: dev
           work-dir: infra/pulumi
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-
-      - name: Update Cloudflare DNS
-        if: ${{ !env.ACT || env.FORCE == 'true' }} # skip when running under act if FORCE is not true
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
-          CF_RECORD_NAME: ${{ vars.CF_RECORD_NAME }}
-          CF_TTL: 300
-          CF_PROXIED: false
-          PUBLIC_IP: ${{ steps.pulumi.outputs.public_ip }}
-        working-directory: infra/pulumi
-        run: |
-          bash ../scripts/cloudflare-set-dns.sh
-      
-      - name: Deployment Summary
-        run: |
-          echo "### Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Stack:** ${{ inputs.stack }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Public IP:** ${{ steps.pulumi.outputs.public_ip }}" >> $GITHUB_STEP_SUMMARY
-          echo "**DNS Record:** ${{ vars.CF_RECORD_NAME }}" >> $GITHUB_STEP_SUMMARY

@@ -7,7 +7,7 @@ ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
 	--container-architecture linux/amd64 \
 	--pull=false
 
-ACT_PULUMI_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
+ACT_INFRA_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
 	-s CF_API_TOKEN=$(CF_API_TOKEN) \
 	-s CF_ZONE_ID=$(CF_ZONE_ID) \
 	--var CF_RECORD_NAME=$(CF_RECORD_NAME) \
@@ -71,31 +71,31 @@ help:
 	@echo "  docker-logs         - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
-	@echo "  make k8s-varnish-vcl-sync             - Generate Kubernetes VCL from template"
-	@echo "  make k8s-local-up                     - Deploy to local k8s (e.g., OrbStack) or Docker environment"
-	@echo "  make k8s-local-down                   - Remove local k8s resources (namespace, local image)"
-	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
-	@echo "  make k8s-status                       - Get status of resources"
-	@echo "  make k8s-logs                         - Tail logs"
-	@echo "  make k8s-port-forward-api             - Port-forward the API service"
-	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
-	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
+	@echo "  make k8s-varnish-vcl-sync      - Generate Kubernetes VCL from template"
+	@echo "  make k8s-local-up              - Deploy to local k8s (e.g., OrbStack) or Docker environment"
+	@echo "  make k8s-local-down            - Remove local k8s resources (namespace, local image)"
+	@echo "  make k8s-wait                  - Wait for deployment rollout to complete"
+	@echo "  make k8s-status                - Get status of resources"
+	@echo "  make k8s-logs                  - Tail logs"
+	@echo "  make k8s-port-forward-api      - Port-forward the API service"
+	@echo "  make k8s-port-forward-varnish  - Port-forward the Varnish service"
+	@echo "  make k8s-port-forward-web      - Port-forward the Web service"
 	@echo ""
 	@echo "Pulumi / Stack Commands:"
-	@echo "  pulumi-stack-init       		- Initialize Pulumi stack (defaults to 'dev')"
-	@echo "  pulumi-preview          		- Run 'pulumi preview' to inspect changes"
-	@echo "  pulumi-up               		- Deploy the stack (interactive)"
-	@echo "  pulumi-destroy          		- Destroy the Pulumi stack"
-	@echo "  pulumi-stack-output     		- Show stack outputs (plain)"
-	@echo "  pulumi-stack-output-json 		- Show stack outputs as JSON"
-	@echo "  pulumi-replace-instance 		- Replace the Spot instance resource with a fresh instance (preserves EIP)"
-	@echo "  pulumi-up-and-sync      		- Run 'make pulumi-up --yes' then 'make cloudflare-set-dns' (convenience)"
-	@echo "  github-actions-oidc-role 		- Create GitHub Actions IAM Role"
+	@echo "  infra-init                     - Initialize Pulumi stack (defaults to 'dev')"
+	@echo "  infra-preview                  - Run 'pulumi preview' to inspect changes"
+	@echo "  infra-up                       - Deploy the stack (interactive)"
+	@echo "  infra-destroy                  - Destroy the Pulumi stack"
+	@echo "  infra-stack-output             - Show stack outputs (plain)"
+	@echo "  infra-stack-output-json        - Show stack outputs as JSON"
+	@echo "  infra-replace-instance         - Replace the Spot instance resource with a fresh instance (preserves EIP)"
+	@echo "  infra-up-and-sync              - Run 'make infra-up --yes' then 'make infra-set-dns' (convenience)"
+	@echo "  infra-github-actions-oidc-role - Create GitHub Actions IAM Role"
 	@echo ""
 	@echo "Cloudflare DNS helpers:"
-	@echo "  cloudflare-set-dns      		- Upsert A record for $(CF_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
-	@echo "  cloudflare-set-dns-dry  		- Dry-run: show what would be updated but do not modify DNS (useful to preview)"
-	@echo "  cloudflare-remove-dns   		- Remove A record for $(CF_RECORD_NAME) from Cloudflare"
+	@echo "  infra-set-dns                  - Upsert A record for $(CF_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
+	@echo "  infra-set-dns-dry              - Dry-run: show what would be updated but do not modify DNS (useful to preview)"
+	@echo "  infra-remove-dns               - Remove A record for $(CF_RECORD_NAME) from Cloudflare"
 	@echo ""	
 	@echo "CI:"
 	@echo "  app-ci                         - Run API CI checks locally"
@@ -105,13 +105,13 @@ help:
 	@echo "  gh-act-web-ci                  - Run Web CI workflow with act"
 	@echo "  gh-act-all-ci                  - Run all GitHub Actions workflows with act"
 	@echo "  gh-dependencies                - Check for act and .env before running GitHub Actions locally"
-	@echo "  gh-act-pulumi-up               - Run the 'pulumi-up.yaml' GitHub Actions workflow locally using 'act'"
-	@echo "  gh-act-pulumi-preview          - Run the 'pulumi-preview.yaml' GitHub Actions workflow locally using 'act'"
-	@echo "  gh-act-pulumi-destroy FORCE=<true|false> - Run the 'pulumi-destroy.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-infra-up                - Run the 'infra-up.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-infra-preview           - Run the 'infra-preview.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-infra-destroy FORCE     - Run the 'infra-destroy.yaml' GitHub Actions workflow locally using 'act'. Use FORCE=true to skip confirmation prompt in destroy workflow."
 
 	@echo ""
 	@echo "Testing:"
-	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
+	@echo "  validate-endpoints PORT        - Validate all API endpoints (default PORT=6081)"
 
 .PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
 
@@ -254,33 +254,33 @@ k8s-lint:
 
 # Pulumi and stack management targets
 
-.PHONY: pulumi-stack-init pulumi-preview pulumi-up pulumi-destroy pulumi-stack-output pulumi-stack-output-json github-actions-oidc-role
+.PHONY: infra-init infra-preview infra-up infra-destroy infra-stack-output infra-stack-output-json infra-github-actions-oidc-role
 
-pulumi-stack-init:
+infra-init:
 	@cd infra/pulumi && \
-	$(PULUMI) stack init $(STACK)
+	$(PULUMI) install
 
-pulumi-preview:
+infra-preview:
 	@cd infra/pulumi && \
 	$(PULUMI) preview
 
-pulumi-up:
+infra-up:
 	@cd infra/pulumi && \
 	$(PULUMI) up
 
-pulumi-destroy:
+infra-destroy:
 	@cd infra/pulumi && \
 	$(PULUMI) destroy --yes
 
-pulumi-stack-output:
+infra-stack-output:
 	@cd infra/pulumi && \
 	$(PULUMI) stack output
 
-pulumi-stack-output-json:
+infra-stack-output-json:
 	@cd infra/pulumi && \
 	$(PULUMI) stack output --json
 
-pulumi-replace-instance:
+infra-replace-instance:
 	@command -v jq >/dev/null 2>&1 || { echo "jq is required to find resource URNs. Install jq (e.g., 'brew install jq')"; exit 1; } ;
 	@tmp=$$(mktemp); \
 	cd infra/pulumi && \
@@ -288,25 +288,25 @@ pulumi-replace-instance:
 	spot_urn=$$(jq -r '.deployment.resources[] | select(.urn | contains("edge-cache-lab-spot")) | .urn' $$tmp | head -n1); \
 	tag_urn=$$(jq -r '.deployment.resources[] | select(.urn | contains("edge-cache-lab-spot-name-tag")) | .urn' $$tmp | head -n1); \
 	rm -f $$tmp; \
-	if [ -z "$$spot_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot'. Run 'make pulumi-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
-	if [ -z "$$tag_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot-name-tag'. Run 'make pulumi-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
+	if [ -z "$$spot_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot'. Run 'make infra-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
+	if [ -z "$$tag_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot-name-tag'. Run 'make infra-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
 	echo "Replacing resource $$spot_urn with $$tag_urn ..."; \
 	$(PULUMI) up --yes --target-replace "$$spot_urn" --target-replace "$$tag_urn"
 
-cloudflare-set-dns:
+infra-set-dns:
 	@cd infra/pulumi && DRY_RUN=0 ../scripts/cloudflare-set-dns.sh
 
-cloudflare-set-dns-dry:
+infra-set-dns-dry:
 	@cd infra/pulumi && DRY_RUN=1 ../scripts/cloudflare-set-dns.sh
 
-cloudflare-remove-dns:
+infra-remove-dns:
 	@cd infra/pulumi && ../scripts/cloudflare-remove-dns.sh
 
-pulumi-up-and-sync:
+infra-up-set-dns:
 	@cd infra/pulumi && $(PULUMI) up --yes
-	@$(MAKE) cloudflare-set-dns
+	@$(MAKE) infra-set-dns
 
-github-actions-oidc-role:
+infra-github-actions-oidc-role:
 	@cd infra && \
 	aws cloudformation deploy \
 		--template-file github-actions-oidc-role.yaml \
@@ -321,24 +321,24 @@ github-actions-oidc-role:
 
 # Instance and SSM helper targets
 
-.PHONY: ssm-deploy-logs ssm-connect
+.PHONY: infra-deploy-logs infra-ec2-connect
 
-ssm-deploy-logs:
+infra-deploy-logs:
 	@echo "📊 Monitoring bootstrap progress:"
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
-	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c \"tail -n 50 -f /var/log/cloud-init-output.log\""]' --region $(REGION)
 
-ssm-connect:
+infra-ec2-connect:
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
-	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --region $(REGION)
 
-ssm-validate-k3s:
+infra-validate-k3s:
 	@echo "🔍 Validating k3s installation..."
 	@echo ""
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
-	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c /usr/local/bin/validate-k3s.sh"]'
 
 .PHONY: validate-endpoints
@@ -385,7 +385,7 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-pulumi-up gh-act-pulumi-preview gh-act-pulumi-destroy
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
@@ -413,17 +413,17 @@ gh-dependencies:
 
 FORCE ?= false
 
-gh-act-pulumi-up: gh-dependencies
-	@$(ACT) -W .github/workflows/pulumi-up.yaml \
-		$(ACT_FLAGS) $(ACT_PULUMI_FLAGS) \
+gh-act-infra-up: gh-dependencies
+	@$(ACT) -W .github/workflows/infra-up.yaml \
+		$(ACT_FLAGS) $(ACT_INFRA_FLAGS) \
 		--env FORCE=$(FORCE)
 
-gh-act-pulumi-preview: gh-dependencies
-	@$(ACT) -W .github/workflows/pulumi-preview.yaml \
-		$(ACT_FLAGS) $(ACT_PULUMI_FLAGS)
+gh-act-infra-preview: gh-dependencies
+	@$(ACT) -W .github/workflows/infra-preview.yaml \
+		$(ACT_FLAGS) $(ACT_INFRA_FLAGS)
 
-gh-act-pulumi-destroy: gh-dependencies 
-	@$(ACT) -W .github/workflows/pulumi-destroy.yaml \
+gh-act-infra-destroy: gh-dependencies 
+	@$(ACT) -W .github/workflows/infra-destroy.yaml \
 		$(ACT_FLAGS) \
-		$(ACT_PULUMI_FLAGS) \
+		$(ACT_INFRA_FLAGS) \
 		--env FORCE=$(FORCE)
