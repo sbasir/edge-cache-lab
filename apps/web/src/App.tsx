@@ -12,8 +12,8 @@ import { OpenAPI } from './api/core/OpenAPI';
 // Get initial dark mode from localStorage (outside component)
 const getInitialDarkMode = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const saved = localStorage.getItem('darkMode');
-  return saved ? JSON.parse(saved) : false;
+  const saved = localStorage.getItem('darkMode');  
+  return saved === 'true';
 };
 
 function AppContent() {
@@ -29,7 +29,7 @@ function AppContent() {
   }, [apiBaseUrl]);
 
   useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    localStorage.setItem('darkMode', String(darkMode));
     document.documentElement.classList.toggle('dark-mode', darkMode);
   }, [darkMode]);
 

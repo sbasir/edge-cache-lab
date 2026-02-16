@@ -63,8 +63,12 @@ sub vcl_backend_response {
 }
 
 sub vcl_deliver {
+    # Remove internal url header before delivery (used only for ban operations)
+    unset resp.http.url;
+
     # Add CORS headers to all responses
-    if (req.http.Origin) {
+    # Validate Origin header against allowlist before reflecting it
+    if (req.http.Origin && req.http.Origin ~ "^https?://(localhost|127\.0\.0\.1):(8080|5173|4173)$|^https://(example\.com|www\.example\.com)$") {
         set resp.http.Access-Control-Allow-Origin = req.http.Origin;
         if (resp.http.Vary) {
             set resp.http.Vary = resp.http.Vary + ", Origin";
@@ -91,7 +95,8 @@ sub vcl_deliver {
 
 sub vcl_synth {
     # Handle CORS for synthetic responses (like PURGE and OPTIONS)
-    if (req.http.Origin) {
+    # Validate Origin header against allowlist before reflecting it
+    if (req.http.Origin && req.http.Origin ~ "^https?://(localhost|127\.0\.0\.1):(8080|5173|4173)$|^https://(example\.com|www\.example\.com)$") {
         set resp.http.Access-Control-Allow-Origin = req.http.Origin;
         if (resp.http.Vary) {
             set resp.http.Vary = resp.http.Vary + ", Origin";
