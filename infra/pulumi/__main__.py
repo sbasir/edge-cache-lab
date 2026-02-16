@@ -328,7 +328,7 @@ spot = ec2.SpotInstanceRequest(
         "encrypted": True,
     },
     tags={
-        "Name": f"{prefix}-vpn",
+        "Name": f"{prefix}-spot",
         "Purpose": "Edge Cache Lab k8s Server",
     },
     opts=pulumi.ResourceOptions(depends_on=[scripts_bucket]),
@@ -338,7 +338,8 @@ ec2.Tag(
     f"{prefix}-spot-name-tag",
     resource_id=spot.spot_instance_id,
     key="Name",
-    value=f"{prefix}-vpn",
+    value=f"{prefix}-spot-instance",
+    opts=pulumi.ResourceOptions(depends_on=[spot]),
 )
 
 # Allocate an Elastic IP so the public IP remains stable across reboots.
@@ -364,7 +365,6 @@ pulumi.export("ami_name", ami.name)
 pulumi.export("instance_id", spot.spot_instance_id)
 pulumi.export("public_ip", ec2_eip.public_ip)
 pulumi.export("eip_allocation_id", ec2_eip.allocation_id)
-pulumi.export("public_dns", spot.public_dns)
 pulumi.export("security_group_id", ec2_sg.id)
 pulumi.export("iam_role_arn", ec2_role.arn)
 pulumi.export("scripts_bucket_name", scripts_bucket.bucket)

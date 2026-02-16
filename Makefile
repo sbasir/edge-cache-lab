@@ -7,9 +7,28 @@ ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
 	--container-architecture linux/amd64 \
 	--pull=false
 
+ACT_PULUMI_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
+	-s CF_API_TOKEN=$(CF_API_TOKEN) \
+	-s CF_ZONE_ID=$(CF_ZONE_ID) \
+	--var CF_RECORD_NAME=$(CF_RECORD_NAME) \
+	-s AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID \
+	-s AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY \
+	-s AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
+	--var AWS_REGION=$(AWS_REGION) \
+	--input stack=$(STACK)
+
 AWS ?= aws
 PULUMI ?= pulumi
 REGION ?= $(AWS_REGION)
+STACK ?= dev
+DRY_RUN ?= true # Set to true by default for safety; override with DRY_RUN=false to execute actions
+
+# Auto-load a local .env file if present (convenience). `.env` should NOT be committed.
+ifneq (,$(wildcard .env))
+include .env
+# Export variables loaded from .env to shell recipes
+export $(filter-out MAKEFILE_LIST, $(.VARIABLES))
+endif
 
 IMAGE_TAG ?= local
 
@@ -69,15 +88,27 @@ help:
 	@echo "  pulumi-destroy          		- Destroy the Pulumi stack"
 	@echo "  pulumi-stack-output     		- Show stack outputs (plain)"
 	@echo "  pulumi-stack-output-json 		- Show stack outputs as JSON"
+	@echo "  pulumi-replace-instance 		- Replace the Spot instance resource with a fresh instance (preserves EIP)"
+	@echo "  pulumi-up-and-sync      		- Run 'make pulumi-up --yes' then 'make cloudflare-set-dns' (convenience)"
 	@echo "  github-actions-oidc-role 		- Create GitHub Actions IAM Role"
 	@echo ""
+	@echo "Cloudflare DNS helpers:"
+	@echo "  cloudflare-set-dns      		- Upsert A record for $(CF_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
+	@echo "  cloudflare-set-dns-dry  		- Dry-run: show what would be updated but do not modify DNS (useful to preview)"
+	@echo "  cloudflare-remove-dns   		- Remove A record for $(CF_RECORD_NAME) from Cloudflare"
+	@echo ""	
 	@echo "CI:"
-	@echo "  app-ci           - Run API CI checks locally"
-	@echo "  web-ci           - Run Web CI checks locally"
-	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
-	@echo "  gh-act-k8s-ci    - Run Kubernetes CI workflow with act"
-	@echo "  gh-act-web-ci    - Run Web CI workflow with act"
-	@echo "  gh-act-all-ci    - Run all GitHub Actions workflows with act"
+	@echo "  app-ci                         - Run API CI checks locally"
+	@echo "  web-ci                         - Run Web CI checks locally"
+	@echo "  gh-act-app-ci                  - Run GitHub Actions workflow with act"
+	@echo "  gh-act-k8s-ci                  - Run Kubernetes CI workflow with act"
+	@echo "  gh-act-web-ci                  - Run Web CI workflow with act"
+	@echo "  gh-act-all-ci                  - Run all GitHub Actions workflows with act"
+	@echo "  gh-dependencies                - Check for act and .env before running GitHub Actions locally"
+	@echo "  gh-act-pulumi-up               - Run the 'pulumi-up.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-pulumi-preview          - Run the 'pulumi-preview.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-pulumi-destroy FORCE=<true|false> - Run the 'pulumi-destroy.yaml' GitHub Actions workflow locally using 'act'"
+
 	@echo ""
 	@echo "Testing:"
 	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
@@ -249,6 +280,32 @@ pulumi-stack-output-json:
 	@cd infra/pulumi && \
 	$(PULUMI) stack output --json
 
+pulumi-replace-instance:
+	@command -v jq >/dev/null 2>&1 || { echo "jq is required to find resource URNs. Install jq (e.g., 'brew install jq')"; exit 1; } ;
+	@tmp=$$(mktemp); \
+	cd infra/pulumi && \
+	$(PULUMI) stack export > $$tmp; \
+	spot_urn=$$(jq -r '.deployment.resources[] | select(.urn | contains("edge-cache-lab-spot")) | .urn' $$tmp | head -n1); \
+	tag_urn=$$(jq -r '.deployment.resources[] | select(.urn | contains("edge-cache-lab-spot-name-tag")) | .urn' $$tmp | head -n1); \
+	rm -f $$tmp; \
+	if [ -z "$$spot_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot'. Run 'make pulumi-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
+	if [ -z "$$tag_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot-name-tag'. Run 'make pulumi-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
+	echo "Replacing resource $$spot_urn with $$tag_urn ..."; \
+	$(PULUMI) up --yes --target-replace "$$spot_urn" --target-replace "$$tag_urn"
+
+cloudflare-set-dns:
+	@bash ./infra/scripts/cloudflare-set-dns.sh
+
+cloudflare-set-dns-dry:
+	@DRY_RUN=1 bash ./infra/scripts/cloudflare-set-dns.sh
+
+cloudflare-remove-dns:
+	@bash ./infra/scripts/cloudflare-remove-dns.sh
+
+pulumi-up-and-sync:
+	@cd infra/pulumi && $(PULUMI) up --yes
+	@$(MAKE) cloudflare-set-dns
+
 github-actions-oidc-role:
 	@cd infra && \
 	aws cloudformation deploy \
@@ -320,7 +377,7 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-pulumi-up gh-act-pulumi-preview gh-act-pulumi-destroy
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
@@ -335,3 +392,30 @@ gh-act-all-ci:
 	@$(MAKE) gh-act-app-ci
 	@$(MAKE) gh-act-k8s-ci
 	@$(MAKE) gh-act-web-ci
+
+gh-dependencies:
+	@command -v act >/dev/null 2>&1 || { \
+		echo "act is required to run GitHub Actions locally. Install act (e.g., 'brew install act')"; \
+		exit 1; \
+	};
+	@if [ ! -f .env ]; then \
+		echo "No .env file found. Create a .env file with required environment variables (see .env.example)"; \
+		exit 1; \
+	fi
+
+FORCE ?= false
+
+gh-act-pulumi-up: gh-dependencies
+	@$(ACT) -W .github/workflows/pulumi-up.yaml \
+		$(ACT_FLAGS) $(ACT_PULUMI_FLAGS) \
+		--env FORCE=$(FORCE)
+
+gh-act-pulumi-preview: gh-dependencies
+	@$(ACT) -W .github/workflows/pulumi-preview.yaml \
+		$(ACT_FLAGS) $(ACT_PULUMI_FLAGS)
+
+gh-act-pulumi-destroy: gh-dependencies 
+	@$(ACT) -W .github/workflows/pulumi-destroy.yaml \
+		$(ACT_FLAGS) \
+		$(ACT_PULUMI_FLAGS) \
+		--env FORCE=$(FORCE)
