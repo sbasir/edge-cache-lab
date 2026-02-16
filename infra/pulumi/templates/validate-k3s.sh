@@ -1,5 +1,5 @@
 #!/bin/bash
-# infra/cdk/config/validate-k3s.sh
+# infra/pulumi/templates/validate-k3s.sh
 # Validates deployment: API + k3s
 
 set -e

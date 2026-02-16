@@ -34,13 +34,14 @@ def build_assume_role_policy() -> str:
     }
     return json.dumps(policy)
 
-# Build the Parameter Store policy that allows read access.
+# Build the Parameter Store policy that allows access.
 def build_parameter_store_policy() -> str:
-    """Return the Parameter Store read policy JSON."""
+    """Return the Parameter Store policy JSON."""
     actions: List[str] = [
         "ssm:GetParameter",
         "ssm:GetParameters",
         "ssm:GetParametersByPath",
+        "ssm:PutParameter",
     ]
     policy: Dict[str, object] = {
         "Version": "2012-10-17",
@@ -48,7 +49,7 @@ def build_parameter_store_policy() -> str:
             {
                 "Effect": "Allow",
                 "Action": actions,
-                "Resource": "*",
+                "Resource": "arn:aws:ssm:*:*:parameter/edge-cache-lab/*",
             }
         ],
     }
@@ -70,14 +71,20 @@ ec2_role = iam.Role(
 )
 
 # Attach AWS managed policy for SSM Session Manager
-ssm_policy_attachment = iam.RolePolicyAttachment(
+_ssm_policy_attachment = iam.RolePolicyAttachment(
     f"{prefix}-ssm-policy",
     role=ec2_role.name,
     policy_arn="arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
 )
 
-# Custom policy for SSM Parameter Store read access
-parameter_store_policy = iam.RolePolicy(
+_cloudwatch_agent_policy_attachment = iam.RolePolicyAttachment(
+    f"{prefix}-cloudwatch-agent-policy",
+    role=ec2_role.name,
+    policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+)
+
+# Custom policy for SSM Parameter Store access
+_parameter_store_policy = iam.RolePolicy(
     f"{prefix}-parameter-store-policy",
     role=ec2_role.name,
     policy=build_parameter_store_policy(),
@@ -97,6 +104,22 @@ ec2_instance_profile = iam.InstanceProfile(
 scripts_bucket = aws.s3.Bucket(
     f"{prefix}-scripts-bucket",
     tags={"Name": f"{prefix}-scripts-bucket"},
+    versioning=aws.s3.BucketVersioningArgs(
+        enabled=True,
+    ),
+)
+
+# Configure server-side encryption for the bucket
+_bucket_sse = aws.s3.BucketServerSideEncryptionConfiguration(
+    f"{prefix}-scripts-bucket-sse",
+    bucket=scripts_bucket.id,
+    rules=[
+        aws.s3.BucketServerSideEncryptionConfigurationRuleArgs(
+            apply_server_side_encryption_by_default=aws.s3.BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefaultArgs(
+                sse_algorithm="AES256",
+            ),
+        )
+    ],
 )
 
 # Upload the Python/shell scripts that would otherwise bloat cloud-config
@@ -117,7 +140,7 @@ validate_k3s_object = aws.s3.BucketObject(
 )
 
 # IAM policy to allow EC2 instance to read scripts from S3
-scripts_bucket_policy = iam.RolePolicy(
+_scripts_bucket_policy = iam.RolePolicy(
     f"{prefix}-scripts-bucket-policy",
     role=ec2_role.name,
     policy=scripts_bucket.arn.apply(

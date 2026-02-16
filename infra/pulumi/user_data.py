@@ -12,10 +12,7 @@ def build_user_data(
     aws_region: AWS region for SSM parameter store access.
     scripts_bucket: S3 bucket name containing bootstrap scripts.
     """
-    context = dict(
-        aws_region=aws_region,
-        scripts_bucket=scripts_bucket,
-    )
+
     if not scripts_bucket:
         raise ValueError("scripts_bucket must be a non-empty string.")
 

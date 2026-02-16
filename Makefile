@@ -25,9 +25,12 @@ DRY_RUN ?= true # Set to true by default for safety; override with DRY_RUN=false
 
 # Auto-load a local .env file if present (convenience). `.env` should NOT be committed.
 ifneq (,$(wildcard .env))
+# Capture variables defined before loading .env
+ENV_PRE_VARS := $(.VARIABLES)
 include .env
-# Export variables loaded from .env to shell recipes
-export $(filter-out MAKEFILE_LIST, $(.VARIABLES))
+# Export only variables newly introduced by .env (avoid exporting all Make internals)
+ENV_NEW_VARS := $(filter-out $(ENV_PRE_VARS) MAKEFILE_LIST,$(.VARIABLES))
+export $(ENV_NEW_VARS)
 endif
 
 IMAGE_TAG ?= local

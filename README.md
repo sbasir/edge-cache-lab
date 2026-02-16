@@ -121,7 +121,7 @@ make gh-act-all-ci
 
 1. **Configure AWS OIDC** - Set up GitHub OIDC provider in AWS IAM
 2. **Create IAM Role** - Create a role with trust policy for your repository
-  - `make github-actions-oidc-role` - creates the IAM role with trust policy for GitHub OIDC authentication
+  - `make infra-github-actions-oidc-role` - creates the IAM role with trust policy for GitHub OIDC authentication
 3. **Add GitHub Repository Secrets**:
   - `AWS_ROLE_ARN` - IAM role ARN for OIDC authentication
     - `gh secret set AWS_ROLE_ARN -r sbasir/edge-cache-lab --body "arn:aws:iam::<account-id>:role/<role-name>"`
@@ -136,16 +136,13 @@ make gh-act-all-ci
     - `gh secret set CF_ZONE_ID -r sbasir/edge-cache-lab --body "<your-cloudflare-zone-id>"`
 4. **Add Github Repository Variables**:
     - `CF_RECORD_NAME` - DNS record name
+      - `gh variable set CF_RECORD_NAME -r sbasir/edge-cache-lab -b edge.example.com`
+    - `AWS_REGION` - AWS region for deployment (e.g., us-east-1)
+      - `gh variable set AWS_REGION -r sbasir/edge-cache-lab -b us-east-1`
 5. **Deploy via GitHub Actions**:
    - Go to Actions → "Pulumi Up" workflow
    - Click "Run workflow"
    - Confirm deployment
-
-### Repository Secrets
-
-- `AWS_ROLE_ARN` - IAM role ARN for OIDC authentication
-  - Created using the CloudFormation template in `infra/github-actions-oidc-role.yaml` (deploy with AWS CLI or CloudFormation console). For convenience, you can run `make github-actions-oidc-role` to create the role.
-  - From the CLI: `gh secret set AWS_ROLE_ARN -r sbasir/edge-cache-lab --body "arn:aws:iam::<account-id>:role/<role-name>"`
 
 ## Varnish Cache
 
