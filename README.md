@@ -91,21 +91,58 @@ make openapi
 
 Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps/api/cmd/server`.
 
-## CI/CD Baseline
+## CI/CD
 
 GitHub Actions runs OpenAPI validation, codegen drift checks, lint/test, and a Docker image build for the API.
 
-Local CI run:
+Local CI runs can be executed with:
 
 ```sh
 make app-ci
+make web-ci
 ```
 
-Run the workflow with `act`:
+Run the all the CI workflows with `act`:
 
 ```sh
-make gh-act-app-ci
+make gh-act-all-ci
 ```
+
+### GitHub Actions Workflows
+
+- **App CI** - Automated linting and testing on PRs and main branch
+- **Web CI** - Automated linting and testing on PRs and main branch
+- **K8s CI** - Validate Kubernetes manifests on PRs and main branch
+- **Infra Preview** - Preview infrastructure changes on PRs
+- **Infra Up** - Deploy infrastructure (manual trigger)
+- **Infra Destroy** - Destroy all infrastructure resources (manual trigger)
+
+### Quick Start
+
+1. **Configure AWS OIDC** - Set up GitHub OIDC provider in AWS IAM
+2. **Create IAM Role** - Create a role with trust policy for your repository
+  - `make infra-github-actions-oidc-role` - creates the IAM role with trust policy for GitHub OIDC authentication
+3. **Add GitHub Repository Secrets**:
+  - `AWS_ROLE_ARN` - IAM role ARN for OIDC authentication
+    - `gh secret set AWS_ROLE_ARN -r sbasir/edge-cache-lab --body "arn:aws:iam::<account-id>:role/<role-name>"`
+  - `PULUMI_ACCESS_TOKEN` - Pulumi Cloud access token
+    - Get from Pulumi Cloud dashboard → Account Settings → Access Tokens
+    - `gh secret set PULUMI_ACCESS_TOKEN -r sbasir/edge-cache-lab --body "<your-pulumi-access-token>"`
+  - `CF_API_TOKEN` - Cloudflare API token
+    - Create a token with "Zone:Zone:Read", "Zone:DNS:Edit" permissions for your zone in the Cloudflare dashboard → My Profile → API Tokens
+    - `gh secret set CF_API_TOKEN -r sbasir/edge-cache-lab --body "<your-cloudflare-api-token>"`
+  - `CF_ZONE_ID` - Cloudflare zone ID
+    - Get from Cloudflare dashboard → Overview → API → Zone ID
+    - `gh secret set CF_ZONE_ID -r sbasir/edge-cache-lab --body "<your-cloudflare-zone-id>"`
+4. **Add Github Repository Variables**:
+    - `CF_RECORD_NAME` - DNS record name
+      - `gh variable set CF_RECORD_NAME -r sbasir/edge-cache-lab -b edge.example.com`
+    - `AWS_REGION` - AWS region for deployment (e.g., us-east-1)
+      - `gh variable set AWS_REGION -r sbasir/edge-cache-lab -b us-east-1`
+5. **Deploy via GitHub Actions**:
+   - Go to Actions → "Pulumi Up" workflow
+   - Click "Run workflow"
+   - Confirm deployment
 
 ## Varnish Cache
 

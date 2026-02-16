@@ -1,0 +1,36 @@
+#cloud-config
+package_update: true
+packages:
+  - jq
+  - git
+  - awscli
+  - amazon-cloudwatch-agent
+
+# 1. Files to be created on the instance
+write_files:
+  # CloudWatch Agent configuration
+  - path: /opt/aws/amazon-cloudwatch-agent/etc/config.json
+    owner: root:root
+    permissions: '0644'
+    content: |
+      {{ cloudwatch_agent_config | indent(width=6) }}
+
+# 2. Commands to run after files are written
+runcmd:
+
+  - mkdir -p /usr/local/bin
+
+  # Download bootstrap scripts from S3 (keeps cloud-config under 16KB limit)
+  - |
+    aws s3 cp "s3://{{ scripts_bucket }}/k3s-install.sh" /usr/local/bin/k3s-install.sh
+    chmod 755 /usr/local/bin/k3s-install.sh
+
+  - |
+    aws s3 cp "s3://{{ scripts_bucket }}/validate-k3s.sh" /usr/local/bin/validate-k3s.sh
+    chmod 755 /usr/local/bin/validate-k3s.sh
+
+  # Install k3s using the downloaded script
+  - |
+    export SSM_PREFIX="{{ ssm_prefix | default('/edge-cache-lab') }}"
+    /usr/local/bin/k3s-install.sh
+  - /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json

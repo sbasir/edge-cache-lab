@@ -109,7 +109,7 @@ Prove the request path end-to-end with one endpoint.
     /api (Go)           → demo store
     /varnish            → VCL
 /infra
-    /pulumi (TS)        → IaC for k8s and cloud resources
+    /pulumi (Python)    → IaC for k8s and cloud resources
     /k8s                → manifests
 /openapi                → OpenAPI spec
     /api.yaml           → use `oapi-codegen` for Go types and server stubs

@@ -12,7 +12,7 @@ The VCL (Varnish Configuration Language) file defines caching behavior:
 
 ```vcl
 backend default {
-    .host = "edge-cache-api";  # Kubernetes service name
+    .host = "api";  # Kubernetes service name
     .port = "3000";
     .connect_timeout = 5s;
     .first_byte_timeout = 10s;
@@ -106,7 +106,7 @@ curl -i -X PURGE http://localhost:6081/product/prod-001 \
 If Varnish fails to start, check:
 1. Backend host is resolvable
 2. VCL syntax is valid
-3. Container logs: `kubectl logs -n edge-cache-api -l app=varnish`
+3. Container logs: `kubectl logs -n edge-cache-lab -l app=varnish`
 
 ### No Cache HITs
 

@@ -40,10 +40,10 @@ Each application gets its own namespace:
 
 ## Current Applications
 ### API
-- Namespace: `edge-cache-api`
+- Namespace: `edge-cache-lab`
 - Base manifests: `infra/k8s/base/api`
 - Local overlay: `infra/k8s/overlays/local`
-- Service: `edge-cache-api` on port 3000 (ClusterIP)
+- Service: `api` on port 3000 (ClusterIP)
 
 ## Working with Manifests
 - Local apply: `make k8s-test-local`

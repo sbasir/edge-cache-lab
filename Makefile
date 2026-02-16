@@ -6,9 +6,36 @@ ACT ?= act
 ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
 	--container-architecture linux/amd64 \
 	--pull=false
+
+ACT_INFRA_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
+	-s CF_API_TOKEN=$(CF_API_TOKEN) \
+	-s CF_ZONE_ID=$(CF_ZONE_ID) \
+	--var CF_RECORD_NAME=$(CF_RECORD_NAME) \
+	-s AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID \
+	-s AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY \
+	-s AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
+	--var AWS_REGION=$(AWS_REGION) \
+	--input stack=$(STACK)
+
+AWS ?= aws
+PULUMI ?= pulumi
+REGION ?= $(AWS_REGION)
+STACK ?= dev
+DRY_RUN ?= true # Set to true by default for safety; override with DRY_RUN=false to execute actions
+
+# Auto-load a local .env file if present (convenience). `.env` should NOT be committed.
+ifneq (,$(wildcard .env))
+# Capture variables defined before loading .env
+ENV_PRE_VARS := $(.VARIABLES)
+include .env
+# Export only variables newly introduced by .env (avoid exporting all Make internals)
+ENV_NEW_VARS := $(filter-out $(ENV_PRE_VARS) MAKEFILE_LIST,$(.VARIABLES))
+export $(ENV_NEW_VARS)
+endif
+
 IMAGE_TAG ?= local
 
-K8S_NAMESPACE ?= edge-cache-api
+K8S_NAMESPACE ?= edge-cache-lab
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
 PURGE_TOKEN ?= test-purge-token
@@ -47,26 +74,47 @@ help:
 	@echo "  docker-logs         - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
-	@echo "  make k8s-varnish-vcl-sync             - Generate Kubernetes VCL from template"
-	@echo "  make k8s-local-up                     - Deploy to local k8s (e.g., OrbStack) or Docker environment"
-	@echo "  make k8s-local-down                   - Remove local k8s resources (namespace, local image)"
-	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
-	@echo "  make k8s-status                       - Get status of resources"
-	@echo "  make k8s-logs                         - Tail logs"
-	@echo "  make k8s-port-forward-api             - Port-forward the API service"
-	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
-	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
+	@echo "  make k8s-varnish-vcl-sync      - Generate Kubernetes VCL from template"
+	@echo "  make k8s-local-up              - Deploy to local k8s (e.g., OrbStack) or Docker environment"
+	@echo "  make k8s-local-down            - Remove local k8s resources (namespace, local image)"
+	@echo "  make k8s-wait                  - Wait for deployment rollout to complete"
+	@echo "  make k8s-status                - Get status of resources"
+	@echo "  make k8s-logs                  - Tail logs"
+	@echo "  make k8s-port-forward-api      - Port-forward the API service"
+	@echo "  make k8s-port-forward-varnish  - Port-forward the Varnish service"
+	@echo "  make k8s-port-forward-web      - Port-forward the Web service"
 	@echo ""
+	@echo "Pulumi / Stack Commands:"
+	@echo "  infra-init                     - Initialize Pulumi stack (defaults to 'dev')"
+	@echo "  infra-preview                  - Run 'pulumi preview' to inspect changes"
+	@echo "  infra-up                       - Deploy the stack (interactive)"
+	@echo "  infra-destroy                  - Destroy the Pulumi stack"
+	@echo "  infra-stack-output             - Show stack outputs (plain)"
+	@echo "  infra-stack-output-json        - Show stack outputs as JSON"
+	@echo "  infra-replace-instance         - Replace the Spot instance resource with a fresh instance (preserves EIP)"
+	@echo "  infra-up-and-sync              - Run 'make infra-up --yes' then 'make infra-set-dns' (convenience)"
+	@echo "  infra-github-actions-oidc-role - Create GitHub Actions IAM Role"
+	@echo ""
+	@echo "Cloudflare DNS helpers:"
+	@echo "  infra-set-dns                  - Upsert A record for $(CF_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
+	@echo "  infra-set-dns-dry              - Dry-run: show what would be updated but do not modify DNS (useful to preview)"
+	@echo "  infra-remove-dns               - Remove A record for $(CF_RECORD_NAME) from Cloudflare"
+	@echo ""	
 	@echo "CI:"
-	@echo "  app-ci           - Run API CI checks locally"
-	@echo "  web-ci           - Run Web CI checks locally"
-	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
-	@echo "  gh-act-k8s-ci    - Run Kubernetes CI workflow with act"
-	@echo "  gh-act-web-ci    - Run Web CI workflow with act"
-	@echo "  gh-act-all-ci    - Run all GitHub Actions workflows with act"
+	@echo "  app-ci                         - Run API CI checks locally"
+	@echo "  web-ci                         - Run Web CI checks locally"
+	@echo "  gh-act-app-ci                  - Run GitHub Actions workflow with act"
+	@echo "  gh-act-k8s-ci                  - Run Kubernetes CI workflow with act"
+	@echo "  gh-act-web-ci                  - Run Web CI workflow with act"
+	@echo "  gh-act-all-ci                  - Run all GitHub Actions workflows with act"
+	@echo "  gh-dependencies                - Check for act and .env before running GitHub Actions locally"
+	@echo "  gh-act-infra-up                - Run the 'infra-up.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-infra-preview           - Run the 'infra-preview.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-infra-destroy FORCE     - Run the 'infra-destroy.yaml' GitHub Actions workflow locally using 'act'. Use FORCE=true to skip confirmation prompt in destroy workflow."
+
 	@echo ""
 	@echo "Testing:"
-	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
+	@echo "  validate-endpoints PORT        - Validate all API endpoints (default PORT=6081)"
 
 .PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
 
@@ -171,7 +219,7 @@ docker-logs:
 .PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward-api k8s-port-forward-varnish k8s-lint
 
 k8s-varnish-vcl-sync:
-	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
+	@BACKEND_HOST=api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
 
 k8s-local-up: k8s-varnish-vcl-sync
 	@docker build -t edge-cache-lab-api:k8s apps/api
@@ -185,16 +233,16 @@ k8s-local-down:
 	@docker image rm -f edge-cache-lab-web:k8s > /dev/null 2>&1 || true
 
 k8s-wait:
-	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api
+	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/api
 
 k8s-status:
 	@kubectl -n $(K8S_NAMESPACE) get all
 
 k8s-logs:
-	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
+	@kubectl -n $(K8S_NAMESPACE) logs -l app=api -f --tail=100
 
 k8s-port-forward-api:
-	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/api 3000:3000
 
 k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
@@ -206,6 +254,95 @@ k8s-lint:
 	@echo "Linting Kubernetes manifests with KubeLinter..."
 	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
 	@kube-linter lint infra/k8s
+
+# Pulumi and stack management targets
+
+.PHONY: infra-init infra-preview infra-up infra-destroy infra-stack-output infra-stack-output-json infra-github-actions-oidc-role
+
+infra-init:
+	@cd infra/pulumi && \
+	$(PULUMI) install
+
+infra-preview:
+	@cd infra/pulumi && \
+	$(PULUMI) preview
+
+infra-up:
+	@cd infra/pulumi && \
+	$(PULUMI) up
+
+infra-destroy:
+	@cd infra/pulumi && \
+	$(PULUMI) destroy --yes
+
+infra-stack-output:
+	@cd infra/pulumi && \
+	$(PULUMI) stack output
+
+infra-stack-output-json:
+	@cd infra/pulumi && \
+	$(PULUMI) stack output --json
+
+infra-replace-instance:
+	@command -v jq >/dev/null 2>&1 || { echo "jq is required to find resource URNs. Install jq (e.g., 'brew install jq')"; exit 1; } ;
+	@tmp=$$(mktemp); \
+	cd infra/pulumi && \
+	$(PULUMI) stack export > $$tmp; \
+	spot_urn=$$(jq -r '.deployment.resources[] | select(.urn | contains("edge-cache-lab-spot")) | .urn' $$tmp | head -n1); \
+	tag_urn=$$(jq -r '.deployment.resources[] | select(.urn | contains("edge-cache-lab-spot-name-tag")) | .urn' $$tmp | head -n1); \
+	rm -f $$tmp; \
+	if [ -z "$$spot_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot'. Run 'make infra-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
+	if [ -z "$$tag_urn" ]; then echo "Could not find resource URN for 'edge-cache-lab-spot-name-tag'. Run 'make infra-stack-output' or 'pulumi stack export' to inspect."; exit 1; fi; \
+	echo "Replacing resource $$spot_urn with $$tag_urn ..."; \
+	$(PULUMI) up --yes --target-replace "$$spot_urn" --target-replace "$$tag_urn"
+
+infra-set-dns:
+	@cd infra/pulumi && DRY_RUN=0 ../scripts/cloudflare-set-dns.sh
+
+infra-set-dns-dry:
+	@cd infra/pulumi && DRY_RUN=1 ../scripts/cloudflare-set-dns.sh
+
+infra-remove-dns:
+	@cd infra/pulumi && ../scripts/cloudflare-remove-dns.sh
+
+infra-up-set-dns:
+	@cd infra/pulumi && $(PULUMI) up --yes
+	@$(MAKE) infra-set-dns
+
+infra-github-actions-oidc-role:
+	@cd infra && \
+	aws cloudformation deploy \
+		--template-file github-actions-oidc-role.yaml \
+		--stack-name EdgeCacheLabGitHubActionsOIDC \
+		--color on \
+		--capabilities CAPABILITY_NAMED_IAM && \
+	aws cloudformation describe-stacks \
+		--stack-name=EdgeCacheLabGitHubActionsOIDC \
+		--query 'Stacks[0].Outputs[?OutputKey == `GitHubActionsRoleArn`].OutputValue' \
+		--output text \
+		--no-cli-pager
+
+# Instance and SSM helper targets
+
+.PHONY: infra-deploy-logs infra-ec2-connect
+
+infra-deploy-logs:
+	@echo "📊 Monitoring bootstrap progress:"
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c \"tail -n 50 -f /var/log/cloud-init-output.log\""]' --region $(REGION)
+
+infra-ec2-connect:
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --region $(REGION)
+
+infra-validate-k3s:
+	@echo "🔍 Validating k3s installation..."
+	@echo ""
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c /usr/local/bin/validate-k3s.sh"]'
 
 .PHONY: validate-endpoints
 PORT ?= 6081
@@ -251,7 +388,7 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
@@ -266,3 +403,30 @@ gh-act-all-ci:
 	@$(MAKE) gh-act-app-ci
 	@$(MAKE) gh-act-k8s-ci
 	@$(MAKE) gh-act-web-ci
+
+gh-dependencies:
+	@command -v act >/dev/null 2>&1 || { \
+		echo "act is required to run GitHub Actions locally. Install act (e.g., 'brew install act')"; \
+		exit 1; \
+	};
+	@if [ ! -f .env ]; then \
+		echo "No .env file found. Create a .env file with required environment variables (see .env.example)"; \
+		exit 1; \
+	fi
+
+FORCE ?= false
+
+gh-act-infra-up: gh-dependencies
+	@$(ACT) -W .github/workflows/infra-up.yaml \
+		$(ACT_FLAGS) $(ACT_INFRA_FLAGS) \
+		--env FORCE=$(FORCE)
+
+gh-act-infra-preview: gh-dependencies
+	@$(ACT) -W .github/workflows/infra-preview.yaml \
+		$(ACT_FLAGS) $(ACT_INFRA_FLAGS)
+
+gh-act-infra-destroy: gh-dependencies 
+	@$(ACT) -W .github/workflows/infra-destroy.yaml \
+		$(ACT_FLAGS) \
+		$(ACT_INFRA_FLAGS) \
+		--env FORCE=$(FORCE)

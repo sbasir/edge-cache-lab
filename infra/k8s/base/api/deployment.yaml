@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edge-cache-api
+  name: api
   annotations:
     ignore-check.kube-linter.io/latest-tag: "Ignored here as Kustomize sets the image tag dynamically during deployment"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: edge-cache-api
+      app: api
   template:
     metadata:
       labels:
-        app: edge-cache-api
+        app: api
     spec:
       securityContext:
         runAsUser: 1000

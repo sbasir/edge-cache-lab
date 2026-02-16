@@ -1,7 +1,7 @@
 vcl 4.1;
 
 backend default {
-    .host = "edge-cache-api";
+    .host = "api";
     .port = "3000";
     .connect_timeout = 5s;
     .first_byte_timeout = 10s;
