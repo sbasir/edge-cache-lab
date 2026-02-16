@@ -9,6 +9,11 @@ backend default {
 }
 
 sub vcl_recv {
+    # Handle CORS preflight for PURGE method
+    if (req.method == "OPTIONS" && req.http.Origin) {
+        return (synth(204, "No Content"));
+    }
+
     # Handle PURGE requests (invalidation)
     if (req.method == "PURGE") {
         # Validate purge token
@@ -19,7 +24,7 @@ sub vcl_recv {
         
         # BAN by product ID from URL if present
         if (req.url ~ "^/product/") {
-            ban(req.url ~ "^/product/");
+            ban("obj.http.url == " + req.url);
             return (synth(200, "Purged"));
         }
         
@@ -52,11 +57,29 @@ sub vcl_recv {
 sub vcl_backend_response {
     # Set TTL for cacheable responses
     if (beresp.status == 200) {
+        set beresp.http.url = bereq.url;
         set beresp.ttl = 2m;
     }
 }
 
 sub vcl_deliver {
+    # Remove internal url header before delivery (used only for ban operations)
+    unset resp.http.url;
+
+    # Add CORS headers to all responses
+    # Validate Origin header against allowlist before reflecting it
+    if (req.http.Origin && req.http.Origin ~ "^https?://(localhost|127\.0\.0\.1):(8080|5173|4173)$|^https://(example\.com|www\.example\.com)$") {
+        set resp.http.Access-Control-Allow-Origin = req.http.Origin;
+        if (resp.http.Vary) {
+            set resp.http.Vary = resp.http.Vary + ", Origin";
+        } else {
+            set resp.http.Vary = "Origin";
+        }
+        set resp.http.Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS,PURGE";
+        set resp.http.Access-Control-Allow-Headers = "Content-Type,Authorization,X-Purge-Token";
+        set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags,X-Cache-Hits";
+    }
+
     # Add X-Cache header to indicate cache status
     if (req.http.X-Pass) {
         set resp.http.X-Cache = "PASS";
@@ -68,4 +91,28 @@ sub vcl_deliver {
 
     # Add hit count for debugging
     set resp.http.X-Cache-Hits = obj.hits;
+}
+
+sub vcl_synth {
+    # Handle CORS for synthetic responses (like PURGE and OPTIONS)
+    # Validate Origin header against allowlist before reflecting it
+    if (req.http.Origin && req.http.Origin ~ "^https?://(localhost|127\.0\.0\.1):(8080|5173|4173)$|^https://(example\.com|www\.example\.com)$") {
+        set resp.http.Access-Control-Allow-Origin = req.http.Origin;
+        if (resp.http.Vary) {
+            set resp.http.Vary = resp.http.Vary + ", Origin";
+        } else {
+            set resp.http.Vary = "Origin";
+        }
+        set resp.http.Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS,PURGE";
+        set resp.http.Access-Control-Allow-Headers = "Content-Type,Authorization,X-Purge-Token";
+        set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags,X-Cache-Hits";
+    }
+
+    # Handle OPTIONS preflight
+    if (req.method == "OPTIONS" && resp.status == 204) {
+        synthetic("");
+        return (deliver);
+    }
+
+    return (deliver);
 }

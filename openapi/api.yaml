@@ -5,10 +5,13 @@ info:
   version: 0.1.0
   contact:
     name: Edge Cache Lab
-    
+    x-api-lifecycle: stable
+
 servers:
+  - url: http://localhost:6081
+    description: Varnish CDN cache endpoint 
   - url: http://localhost:3000
-    description: Local development server
+    description: Direct origin API server
 
 paths:
   /health:

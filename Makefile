@@ -18,27 +18,33 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "API:"
-	@echo "  api-init     - Initialize the API module"
-	@echo "  api-install  - Install API dependencies"
-	@echo "  api-run      - Run the API server"
-	@echo "  api-test     - Run tests for the API"
-	@echo "  api-lint     - Run linters for the API"
-	@echo "  api-fmt      - Format the API code"
+	@echo "  api-init            - Initialize the API module"
+	@echo "  api-install         - Install API dependencies"
+	@echo "  api-run             - Run the API server"
+	@echo "  api-test            - Run tests for the API"
+	@echo "  api-lint            - Run linters for the API"
+	@echo "  api-fmt             - Format the API code"
+	@echo "  api-docker-build    - Build the API Docker image"
+	@echo ""
+	@echo "Web:"
+	@echo "  web-install         - Install web dependencies"
+	@echo "  web-generate-client - Generate OpenAPI TypeScript client"
+	@echo "  web-run             - Run the web dev server"
+	@echo "  web-build           - Build web for production"
+	@echo "  web-preview         - Preview production build"
+	@echo "  web-lint            - Lint web code"
+	@echo "  web-docker-build    - Build web Docker image"
 	@echo ""
 	@echo "OpenAPI:"
-	@echo "  openapi          - Generate Go code from OpenAPI spec"
-	@echo "  openapi-validate - Validate OpenAPI spec"
-	@echo "  openapi-diff     - Fail if generated OpenAPI code differs"
-	@echo ""
-	@echo "CI:"
-	@echo "  app-ci           - Run CI checks locally"
-	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
+	@echo "  openapi             - Generate Go code from OpenAPI spec"
+	@echo "  openapi-validate    - Validate OpenAPI spec"
+	@echo "  openapi-diff        - Fail if generated OpenAPI code differs"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker-build - Build the Docker images"
-	@echo "  docker-up    - Start the application using Docker Compose"
-	@echo "  docker-down  - Stop the application and remove containers"
-	@echo "  docker-logs  - Follow the logs of the application"
+	@echo "  docker-build        - Build the Docker images"
+	@echo "  docker-up           - Start the application using Docker Compose"
+	@echo "  docker-down         - Stop the application and remove containers"
+	@echo "  docker-logs         - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
 	@echo "  make k8s-varnish-vcl-sync             - Generate Kubernetes VCL from template"
@@ -47,8 +53,17 @@ help:
 	@echo "  make k8s-wait                         - Wait for deployment rollout to complete"
 	@echo "  make k8s-status                       - Get status of resources"
 	@echo "  make k8s-logs                         - Tail logs"
-	@echo "  make k8s-port-forward                 - Port-forward the API service"
+	@echo "  make k8s-port-forward-api             - Port-forward the API service"
 	@echo "  make k8s-port-forward-varnish         - Port-forward the Varnish service"
+	@echo "  make k8s-port-forward-web             - Port-forward the Web service"
+	@echo ""
+	@echo "CI:"
+	@echo "  app-ci           - Run API CI checks locally"
+	@echo "  web-ci           - Run Web CI checks locally"
+	@echo "  gh-act-app-ci    - Run GitHub Actions workflow with act"
+	@echo "  gh-act-k8s-ci    - Run Kubernetes CI workflow with act"
+	@echo "  gh-act-web-ci    - Run Web CI workflow with act"
+	@echo "  gh-act-all-ci    - Run all GitHub Actions workflows with act"
 	@echo ""
 	@echo "Testing:"
 	@echo "  validate-endpoints PORT=<port>       - Validate all API endpoints (default PORT=6081)"
@@ -98,7 +113,7 @@ openapi-validate:
 		-package api \
 		openapi/api.yaml > /dev/null 2>&1 && echo "✓ OpenAPI spec is valid" || (echo "✗ OpenAPI spec validation failed" && exit 1)
 
-openapi-diff:
+openapi-diff: openapi
 	@echo "Checking for OpenAPI codegen drift..."
 	@git diff --exit-code -- apps/api/internal/api/api.gen.go
 	@echo "✓ OpenAPI codegen is in sync"
@@ -106,9 +121,41 @@ openapi-diff:
 api-docker-build:
 	@docker build -t edge-cache-lab-api:$(IMAGE_TAG) apps/api
 
-app-ci: openapi-validate openapi-diff api-lint api-test openapi api-docker-build
+app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build
+
+.PHONY: web-install web-generate-client web-run web-build web-preview web-lint web-docker-build
+
+web-install:
+	@echo "Installing web dependencies..."
+	@cd apps/web && corepack enable && corepack prepare pnpm@10.28.1 --activate && pnpm install
+
+web-generate-client:
+	@echo "Generating OpenAPI TypeScript client..."
+	@cd apps/web && pnpm run generate-client
+	@echo "✓ Generated TypeScript client in apps/web/src/api"
+
+web-run: web-install web-generate-client
+	@echo "Starting web dev server on http://localhost:5173" && \
+	cd apps/web && pnpm run dev
+
+web-build: web-install web-generate-client
+	@echo "Building web for production..." && \
+	cd apps/web && pnpm run build
+
+web-preview: web-build
+	@echo "Previewing production build on http://localhost:4173" && \
+	cd apps/web && pnpm run preview
+
+web-lint:
+	@cd apps/web && pnpm run lint
+
+web-docker-build:
+	@docker build -t edge-cache-lab-web:$(IMAGE_TAG) apps/web
+
+web-ci: web-build web-lint web-docker-build
 
 .PHONY: docker-build docker-up docker-down docker-logs
+
 docker-build:
 	@docker compose build
 
@@ -121,22 +168,21 @@ docker-down:
 docker-logs:
 	@docker compose logs -f --tail=100
 
-.PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward k8s-port-forward-varnish k8s-lint
+.PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward-api k8s-port-forward-varnish k8s-lint
 
 k8s-varnish-vcl-sync:
 	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
 
 k8s-local-up: k8s-varnish-vcl-sync
-	@docker build -t edge-cache-lab-api:local apps/api
+	@docker build -t edge-cache-lab-api:k8s apps/api
+	@docker build -t edge-cache-lab-web:k8s apps/web
 	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
-
-k8s-port-forward:
-	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
 
 k8s-local-down:
 	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
 	@kubectl delete namespace $(K8S_NAMESPACE) --ignore-not-found
-	@docker image rm -f edge-cache-lab-api:local > /dev/null 2>&1 || true
+	@docker image rm -f edge-cache-lab-api:k8s > /dev/null 2>&1 || true
+	@docker image rm -f edge-cache-lab-web:k8s > /dev/null 2>&1 || true
 
 k8s-wait:
 	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api
@@ -147,8 +193,14 @@ k8s-status:
 k8s-logs:
 	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
 
+k8s-port-forward-api:
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
+
 k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
+
+k8s-port-forward-web:
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/web 8080:80
 
 k8s-lint:
 	@echo "Linting Kubernetes manifests with KubeLinter..."
@@ -199,10 +251,18 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
 
 gh-act-k8s-ci:
 	@$(ACT) -W .github/workflows/k8s-ci.yaml $(ACT_FLAGS)
+
+gh-act-web-ci:
+	@$(ACT) -W .github/workflows/web-ci.yaml $(ACT_FLAGS)
+
+gh-act-all-ci:
+	@$(MAKE) gh-act-app-ci
+	@$(MAKE) gh-act-k8s-ci
+	@$(MAKE) gh-act-web-ci

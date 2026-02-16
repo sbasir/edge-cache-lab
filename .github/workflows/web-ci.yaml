@@ -1,0 +1,47 @@
+name: Web CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup pnpm
+        run: corepack prepare pnpm@10.28.1 --activate
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate OpenAPI client
+        working-directory: apps/web
+        run: pnpm run generate-client
+
+      - name: Lint
+        working-directory: apps/web
+        run: pnpm run lint
+
+      - name: Build
+        working-directory: apps/web
+        run: pnpm run build
+
+      - name: Build Docker image
+        run: make web-docker-build IMAGE_TAG=ci-${{ github.sha }}

@@ -47,7 +47,9 @@ Each application gets its own namespace:
 
 ## Working with Manifests
 - Local apply: `make k8s-test-local`
-- Port-forward: `make k8s-port-forward`
+- Port-forward API: `make k8s-port-forward-api`
+- Port-forward Varnish: `make k8s-port-forward-varnish`
+- Port-forward Web: `make k8s-port-forward-web`
 - Wait for rollout: `make k8s-wait`
 - Check status: `make k8s-status`
 - Tail logs: `make k8s-logs`

@@ -4,4 +4,6 @@ resources:
   - ../../base
 images:
   - name: edge-cache-lab-api
-    newTag: local
+    newTag: k8s
+  - name: edge-cache-lab-web
+    newTag: k8s

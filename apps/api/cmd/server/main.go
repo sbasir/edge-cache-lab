@@ -61,12 +61,53 @@ func (s *Server) MountHandlers() {
 	s.Router.Use(middleware.RequestID)
 	s.Router.Use(middleware.RealIP)
 	s.Router.Use(middleware.Recoverer)
+	s.Router.Use(corsMiddleware)
 	s.Router.Use(requestLogger)
 
 	api.HandlerWithOptions(s.api, api.ChiServerOptions{
 		BaseRouter:       s.Router,
 		ErrorHandlerFunc: s.api.handleError,
 	})
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	allowedOrigins := parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://localhost:5173"))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && isAllowedOrigin(origin, allowedOrigins) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PURGE")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Purge-Token")
+			w.Header().Set("Access-Control-Expose-Headers", "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags")
+		}
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func parseAllowedOrigins(value string) map[string]struct{} {
+	allowed := make(map[string]struct{})
+	for _, origin := range strings.Split(value, ",") {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" {
+			allowed[trimmed] = struct{}{}
+		}
+	}
+	return allowed
+}
+
+func isAllowedOrigin(origin string, allowed map[string]struct{}) bool {
+	if _, ok := allowed["*"]; ok {
+		return true
+	}
+	_, ok := allowed[origin]
+	return ok
 }
 
 func getEnv(key, fallback string) string {
@@ -249,6 +290,8 @@ func (a *API) UpdateProduct(w http.ResponseWriter, r *http.Request, id string, p
 	if update.InStock != nil {
 		product.InStock = *update.InStock
 	}
+
+	productCatalog[id] = product
 
 	w.Header().Set("X-Purge-Tags", fmt.Sprintf("product:%s", id))
 	a.writeJSON(w, r, http.StatusOK, product)
