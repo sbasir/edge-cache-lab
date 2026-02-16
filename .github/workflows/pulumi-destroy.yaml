@@ -82,8 +82,9 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
           CF_RECORD_NAME: ${{ vars.CF_RECORD_NAME }}
+        working-directory: infra/pulumi
         run: |
-          bash ./infra/scripts/cloudflare-remove-dns.sh || echo "DNS record removal failed or record does not exist"
+          bash ../scripts/cloudflare-remove-dns.sh || echo "DNS record removal failed or record does not exist"
       
       - name: Destroy with Pulumi
         if: ${{ !env.ACT || env.FORCE == 'true' }} # skip when running under act if FORCE is not true

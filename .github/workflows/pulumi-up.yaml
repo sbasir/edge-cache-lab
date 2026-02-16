@@ -86,8 +86,9 @@ jobs:
           CF_TTL: 300
           CF_PROXIED: false
           PUBLIC_IP: ${{ steps.pulumi.outputs.public_ip }}
+        working-directory: infra/pulumi
         run: |
-          bash ./infra/scripts/cloudflare-set-dns.sh
+          bash ../scripts/cloudflare-set-dns.sh
       
       - name: Deployment Summary
         run: |

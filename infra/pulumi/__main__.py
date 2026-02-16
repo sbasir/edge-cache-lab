@@ -108,6 +108,14 @@ k3s_install_object = aws.s3.BucketObject(
     content_type="text/x-sh",
 )
 
+validate_k3s_object = aws.s3.BucketObject(
+    f"{prefix}-validate-k3s-script",
+    bucket=scripts_bucket.id,
+    key="validate-k3s.sh",
+    content=load_template_source("validate-k3s.sh"),
+    content_type="text/x-sh",
+)
+
 # IAM policy to allow EC2 instance to read scripts from S3
 scripts_bucket_policy = iam.RolePolicy(
     f"{prefix}-scripts-bucket-policy",

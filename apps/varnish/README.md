@@ -17,7 +17,7 @@ Reverse proxy cache layer for the Edge Cache Lab API.
 
 Uses `infra/k8s/base/varnish/default.vcl` generated from `default.vcl.template` via `make k8s-varnish-vcl-sync`.
 
-Backend host: `edge-cache-api` (service name)
+Backend host: `api` (service name)
 
 ### Docker Compose
 

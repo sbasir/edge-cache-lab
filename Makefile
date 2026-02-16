@@ -32,7 +32,7 @@ endif
 
 IMAGE_TAG ?= local
 
-K8S_NAMESPACE ?= edge-cache-api
+K8S_NAMESPACE ?= edge-cache-lab
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
 
 PURGE_TOKEN ?= test-purge-token
@@ -216,7 +216,7 @@ docker-logs:
 .PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward-api k8s-port-forward-varnish k8s-lint
 
 k8s-varnish-vcl-sync:
-	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
+	@BACKEND_HOST=api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
 
 k8s-local-up: k8s-varnish-vcl-sync
 	@docker build -t edge-cache-lab-api:k8s apps/api
@@ -230,16 +230,16 @@ k8s-local-down:
 	@docker image rm -f edge-cache-lab-web:k8s > /dev/null 2>&1 || true
 
 k8s-wait:
-	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api
+	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/api
 
 k8s-status:
 	@kubectl -n $(K8S_NAMESPACE) get all
 
 k8s-logs:
-	@kubectl -n $(K8S_NAMESPACE) logs -l app=edge-cache-api -f --tail=100
+	@kubectl -n $(K8S_NAMESPACE) logs -l app=api -f --tail=100
 
 k8s-port-forward-api:
-	@kubectl -n $(K8S_NAMESPACE) port-forward svc/edge-cache-api 3000:3000
+	@kubectl -n $(K8S_NAMESPACE) port-forward svc/api 3000:3000
 
 k8s-port-forward-varnish:
 	@kubectl -n $(K8S_NAMESPACE) port-forward svc/varnish 6081:80
@@ -294,13 +294,13 @@ pulumi-replace-instance:
 	$(PULUMI) up --yes --target-replace "$$spot_urn" --target-replace "$$tag_urn"
 
 cloudflare-set-dns:
-	@bash ./infra/scripts/cloudflare-set-dns.sh
+	@cd infra/pulumi && DRY_RUN=0 ../scripts/cloudflare-set-dns.sh
 
 cloudflare-set-dns-dry:
-	@DRY_RUN=1 bash ./infra/scripts/cloudflare-set-dns.sh
+	@cd infra/pulumi && DRY_RUN=1 ../scripts/cloudflare-set-dns.sh
 
 cloudflare-remove-dns:
-	@bash ./infra/scripts/cloudflare-remove-dns.sh
+	@cd infra/pulumi && ../scripts/cloudflare-remove-dns.sh
 
 pulumi-up-and-sync:
 	@cd infra/pulumi && $(PULUMI) up --yes
@@ -326,12 +326,20 @@ github-actions-oidc-role:
 ssm-deploy-logs:
 	@echo "📊 Monitoring bootstrap progress:"
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c \"tail -n 50 -f /var/log/cloud-init-output.log\""]' --region $(REGION)
 
 ssm-connect:
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
 	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --region $(REGION)
+
+ssm-validate-k3s:
+	@echo "🔍 Validating k3s installation..."
+	@echo ""
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c /usr/local/bin/validate-k3s.sh"]'
 
 .PHONY: validate-endpoints
 PORT ?= 6081
