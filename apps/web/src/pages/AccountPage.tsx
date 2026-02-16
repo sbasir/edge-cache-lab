@@ -20,6 +20,10 @@ export default function AccountPage() {
         const response = await fetchNoStore(`${OpenAPI.BASE}/account`);
         setHeaders(headersFromResponse(response));
         
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+        }
+
         const result = await response.json();
         setAccount(result);
       } catch (err) {

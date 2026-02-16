@@ -24,7 +24,7 @@ sub vcl_recv {
         
         # BAN by product ID from URL if present
         if (req.url ~ "^/product/") {
-            ban(req.url ~ "^/product/");
+            ban("obj.http.url == " + req.url);
             return (synth(200, "Purged"));
         }
         
@@ -57,6 +57,7 @@ sub vcl_recv {
 sub vcl_backend_response {
     # Set TTL for cacheable responses
     if (beresp.status == 200) {
+        set beresp.http.url = bereq.url;
         set beresp.ttl = 2m;
     }
 }
@@ -65,7 +66,11 @@ sub vcl_deliver {
     # Add CORS headers to all responses
     if (req.http.Origin) {
         set resp.http.Access-Control-Allow-Origin = req.http.Origin;
-        set resp.http.Vary = "Origin";
+        if (resp.http.Vary) {
+            set resp.http.Vary = resp.http.Vary + ", Origin";
+        } else {
+            set resp.http.Vary = "Origin";
+        }
         set resp.http.Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS,PURGE";
         set resp.http.Access-Control-Allow-Headers = "Content-Type,Authorization,X-Purge-Token";
         set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags,X-Cache-Hits";
@@ -88,10 +93,14 @@ sub vcl_synth {
     # Handle CORS for synthetic responses (like PURGE and OPTIONS)
     if (req.http.Origin) {
         set resp.http.Access-Control-Allow-Origin = req.http.Origin;
-        set resp.http.Vary = "Origin";
+        if (resp.http.Vary) {
+            set resp.http.Vary = resp.http.Vary + ", Origin";
+        } else {
+            set resp.http.Vary = "Origin";
+        }
         set resp.http.Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS,PURGE";
         set resp.http.Access-Control-Allow-Headers = "Content-Type,Authorization,X-Purge-Token";
-        set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags";
+        set resp.http.Access-Control-Expose-Headers = "Cache-Control,Surrogate-Control,ETag,X-Cache,X-Request-Id,X-Purge-Tags,X-Cache-Hits";
     }
 
     # Handle OPTIONS preflight

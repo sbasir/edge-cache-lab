@@ -113,7 +113,7 @@ openapi-validate:
 		-package api \
 		openapi/api.yaml > /dev/null 2>&1 && echo "✓ OpenAPI spec is valid" || (echo "✗ OpenAPI spec validation failed" && exit 1)
 
-openapi-diff:
+openapi-diff: openapi
 	@echo "Checking for OpenAPI codegen drift..."
 	@git diff --exit-code -- apps/api/internal/api/api.gen.go
 	@echo "✓ OpenAPI codegen is in sync"
@@ -134,11 +134,11 @@ web-generate-client:
 	@cd apps/web && pnpm run generate-client
 	@echo "✓ Generated TypeScript client in apps/web/src/api"
 
-web-run: web-install
+web-run: web-install web-generate-client
 	@echo "Starting web dev server on http://localhost:5173" && \
 	cd apps/web && pnpm run dev
 
-web-build: web-install
+web-build: web-install web-generate-client
 	@echo "Building web for production..." && \
 	cd apps/web && pnpm run build
 
@@ -152,7 +152,7 @@ web-lint:
 web-docker-build:
 	@docker build -t edge-cache-lab-web:$(IMAGE_TAG) apps/web
 
-web-ci: web-build web-lint web-generate-client web-docker-build
+web-ci: web-build web-lint web-docker-build
 
 .PHONY: docker-build docker-up docker-down docker-logs
 
@@ -174,15 +174,15 @@ k8s-varnish-vcl-sync:
 	@BACKEND_HOST=edge-cache-api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
 
 k8s-local-up: k8s-varnish-vcl-sync
-	@docker build -t edge-cache-lab-api:local apps/api
-	@docker build -t edge-cache-lab-web:local apps/web
+	@docker build -t edge-cache-lab-api:k8s apps/api
+	@docker build -t edge-cache-lab-web:k8s apps/web
 	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
 
 k8s-local-down:
 	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
 	@kubectl delete namespace $(K8S_NAMESPACE) --ignore-not-found
-	@docker image rm -f edge-cache-lab-api:local > /dev/null 2>&1 || true
-	@docker image rm -f edge-cache-lab-web:local > /dev/null 2>&1 || true
+	@docker image rm -f edge-cache-lab-api:k8s > /dev/null 2>&1 || true
+	@docker image rm -f edge-cache-lab-web:k8s > /dev/null 2>&1 || true
 
 k8s-wait:
 	@kubectl -n $(K8S_NAMESPACE) rollout status deployment/edge-cache-api

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
@@ -33,7 +33,7 @@ function AppContent() {
     document.documentElement.classList.toggle('dark-mode', darkMode);
   }, [darkMode]);
 
-  const handleNavClick = (path: string, e: React.MouseEvent) => {
+  const handleNavClick = (path: string, e: MouseEvent<HTMLAnchorElement>) => {
     if (location.pathname === path) {
       e.preventDefault();
       // Force reload to refresh cache status

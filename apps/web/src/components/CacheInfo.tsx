@@ -1,4 +1,16 @@
 import { useState } from 'react';
+
+const CACHE_STATUS_MAP: Record<string, string> = {
+  'HIT': 'hit',
+  'MISS': 'miss',
+  'PASS': 'pass',
+};
+
+const sanitizeCacheStatus = (status: string): string => {
+  const normalized = status.toUpperCase().trim();
+  return CACHE_STATUS_MAP[normalized] || 'unknown';
+};
+
 import type { ResponseMeta } from '../api';
 
 interface CacheInfoProps {
@@ -25,7 +37,7 @@ export default function CacheInfo({ meta, headers }: CacheInfoProps) {
       <div className="cache-details">
         <div className="cache-item">
           <span className="cache-label">Cache Status:</span>
-          <span className={`cache-value cache-status-${xCache.toLowerCase()}`}>
+          <span className={`cache-value cache-status-${sanitizeCacheStatus(xCache)}`}>
             {xCache}
           </span>
         </div>

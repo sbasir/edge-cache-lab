@@ -24,6 +24,10 @@ export default function HomePage() {
         });
         setHeaders(headersObj);
 
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+        }
+
         const result = await response.json();
         setData(result);
       } catch (err) {

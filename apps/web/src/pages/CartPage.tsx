@@ -20,6 +20,10 @@ export default function CartPage() {
         const response = await fetchNoStore(`${OpenAPI.BASE}/cart`);
         setHeaders(headersFromResponse(response));
         
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+        }
+
         const result = await response.json();
         setCart(result);
       } catch (err) {

@@ -20,6 +20,10 @@ export default function CategoryPage() {
         const response = await fetchNoStore(`${OpenAPI.BASE}/category`);
         setHeaders(headersFromResponse(response));
         
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+        }
+
         const result = await response.json();
         setCategories(result.categories || []);
       } catch (err) {
