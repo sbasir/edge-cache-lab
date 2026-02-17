@@ -267,14 +267,22 @@ k8s-lint:
 	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
 	@kube-linter lint infra/k8s
 
+INSTANCE_ID ?=
+
 k8s-remote-up:
 	@if [ $(IMAGE_TAG) = "local" ]; then \
 		echo "Error: IMAGE_TAG cannot be 'local' for remote deployment. Please specify a valid image tag (e.g., 'make k8s-remote-up IMAGE_TAG=v1.0.0')"; \
 		exit 1; \
 	fi;
-	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -n "$(INSTANCE_ID)" ]; then \
+		echo "Using provided INSTANCE_ID: $(INSTANCE_ID)"; \
+		id=$(INSTANCE_ID); \
+	else \
+		@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+		cd ../../ && echo "Using instance_id from Pulumi stack output: $$id"; \
+	fi; \
 	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
-	cd ../../ && bash infra/scripts/deploy-k8s.sh \
+	bash infra/scripts/deploy-k8s.sh \
 		--instance-id $$id \
 		--overlay-path $(K8S_OVERLAY_PRODUCTION) \
 		--image-uri ghcr.io/sbasir/edge-cache-lab-api \

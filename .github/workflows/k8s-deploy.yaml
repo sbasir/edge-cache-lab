@@ -61,7 +61,7 @@ jobs:
           
       - name: Deploy to k3s
         run: |
-          make k8s-remote-up IMAGE_TAG=${{ inputs.image-tag }}
+          make k8s-remote-up INSTANCE_ID=${{ steps.pulumi.outputs.instance_id }} IMAGE_TAG=${{ inputs.image-tag }}
 
       # TODO: Add smoke tests to validate the deployment
       # - name: Validate production
