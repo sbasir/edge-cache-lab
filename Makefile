@@ -12,7 +12,7 @@ ACT_WEB_FLAGS = -s CF_API_TOKEN=$(CF_API_TOKEN)
 ACT_INFRA_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
 	-s CF_API_TOKEN=$(CF_API_TOKEN) \
 	-s CF_ZONE_ID=$(CF_ZONE_ID) \
-	--var CF_RECORD_NAME=$(CF_RECORD_NAME) \
+	--var CF_API_RECORD_NAME=$(CF_API_RECORD_NAME) \
 	-s AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID \
 	-s AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY \
 	-s AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
@@ -98,9 +98,9 @@ help:
 	@echo "  infra-github-actions-oidc-role - Create GitHub Actions IAM Role"
 	@echo ""
 	@echo "Cloudflare DNS helpers:"
-	@echo "  infra-set-dns                  - Upsert A record for $(CF_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
+	@echo "  infra-set-dns                  - Upsert A record for $(CF_API_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
 	@echo "  infra-set-dns-dry              - Dry-run: show what would be updated but do not modify DNS (useful to preview)"
-	@echo "  infra-remove-dns               - Remove A record for $(CF_RECORD_NAME) from Cloudflare"
+	@echo "  infra-remove-dns               - Remove A record for $(CF_API_RECORD_NAME) from Cloudflare"
 	@echo ""	
 	@echo "CI:"
 	@echo "  app-ci                         - Run API CI checks locally"

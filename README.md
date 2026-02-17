@@ -141,8 +141,8 @@ make gh-act-all-ci
     - Get from Cloudflare dashboard → Overview → API → Zone ID
     - `gh secret set CF_ZONE_ID -r sbasir/edge-cache-lab --body "<your-cloudflare-zone-id>"`
 4. **Add Github Repository Variables**:
-    - `CF_RECORD_NAME` - DNS record name
-      - `gh variable set CF_RECORD_NAME -r sbasir/edge-cache-lab -b edge.example.com`
+    - `CF_API_RECORD_NAME` - DNS record name
+      - `gh variable set CF_API_RECORD_NAME -r sbasir/edge-cache-lab -b api.edge.example.com`
     - `AWS_REGION` - AWS region for deployment (e.g., us-east-1)
       - `gh variable set AWS_REGION -r sbasir/edge-cache-lab -b us-east-1`
 5. **Deploy via GitHub Actions**:
