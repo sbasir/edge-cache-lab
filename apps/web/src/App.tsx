@@ -21,7 +21,7 @@ function AppContent() {
   
   const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [apiBaseUrl, setApiBaseUrl] = useState(
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:6081'
+    import.meta.env.VITE_API_BASE_URL
   );
 
   useEffect(() => {
