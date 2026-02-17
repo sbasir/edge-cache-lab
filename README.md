@@ -129,16 +129,24 @@ make gh-act-all-ci
     - Get from Pulumi Cloud dashboard → Account Settings → Access Tokens
     - `gh secret set PULUMI_ACCESS_TOKEN -r sbasir/edge-cache-lab --body "<your-pulumi-access-token>"`
   - `CF_API_TOKEN` - Cloudflare API token
-    - Create a token with "Zone:Zone:Read", "Zone:DNS:Edit" permissions for your zone in the Cloudflare dashboard → My Profile → API Tokens
+    - Create a token for your zone in the Cloudflare dashboard → My Profile → API Tokens with permissions:
+      - Zone:Zone:Read
+      - Zone:DNS:Edit
+      - Zone:Workers Routes:Edit
+      - User:Membership:Read
+      - User:User Details:Read
+      - Account:Workers Scripts:Edit
     - `gh secret set CF_API_TOKEN -r sbasir/edge-cache-lab --body "<your-cloudflare-api-token>"`
   - `CF_ZONE_ID` - Cloudflare zone ID
     - Get from Cloudflare dashboard → Overview → API → Zone ID
     - `gh secret set CF_ZONE_ID -r sbasir/edge-cache-lab --body "<your-cloudflare-zone-id>"`
 4. **Add Github Repository Variables**:
-    - `CF_RECORD_NAME` - DNS record name
-      - `gh variable set CF_RECORD_NAME -r sbasir/edge-cache-lab -b edge.example.com`
+    - `CF_API_RECORD_NAME` - DNS record name
+      - `gh variable set CF_API_RECORD_NAME -r sbasir/edge-cache-lab -b api.edge.example.com`
     - `AWS_REGION` - AWS region for deployment (e.g., us-east-1)
       - `gh variable set AWS_REGION -r sbasir/edge-cache-lab -b us-east-1`
+    - `API_BASE_URL` - Base URL for the API (used in web frontend build)
+      - `gh variable set API_BASE_URL -r sbasir/edge-cache-lab -b https://api.edge.example.com`
 5. **Deploy via GitHub Actions**:
    - Go to Actions → "Pulumi Up" workflow
    - Click "Run workflow"

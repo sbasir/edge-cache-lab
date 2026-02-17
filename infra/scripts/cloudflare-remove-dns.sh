@@ -12,15 +12,15 @@ command -v curl >/dev/null 2>&1 || { echo "curl is required"; exit 1; }
 
 : "${CF_API_TOKEN:?CF_API_TOKEN must be set (see .env.example)}"
 : "${CF_ZONE_ID:?CF_ZONE_ID must be set (see .env.example)}"
-: "${CF_RECORD_NAME:?CF_RECORD_NAME must be set (see .env.example)}"
+: "${CF_API_RECORD_NAME:?CF_API_RECORD_NAME must be set (see .env.example)}"
 
-printf "Preparing to remove Cloudflare record %s\n" "$CF_RECORD_NAME"
+printf "Preparing to remove Cloudflare record %s\n" "$CF_API_RECORD_NAME"
 
-RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?type=A&name=$CF_RECORD_NAME" \
+RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?type=A&name=$CF_API_RECORD_NAME" \
   -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" | jq -r '.result[0].id // empty')
 
 if [ -z "$RECORD_ID" ]; then
-  echo "No DNS record found for $CF_RECORD_NAME"
+  echo "No DNS record found for $CF_API_RECORD_NAME"
   exit 0
 fi
 

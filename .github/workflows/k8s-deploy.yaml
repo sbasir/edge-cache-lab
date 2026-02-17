@@ -1,0 +1,69 @@
+name: k8s Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: 'Docker image tag to deploy (e.g., "latest" or "v1.0.0")'
+        required: true
+        default: 'latest'
+
+jobs:
+  
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install kustomize
+        run: |
+          curl -sSL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          sudo mv kustomize /usr/local/bin/kustomize
+
+      - name: Install session-manager-plugin
+        run: |
+          curl -sSL https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb -o /tmp/session-manager-plugin.deb
+          sudo dpkg -i /tmp/session-manager-plugin.deb
+
+      - name: Configure AWS credentials via OIDC
+        if: ${{ !env.ACT }}
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Configure AWS credentials (local) 
+        if: ${{ env.ACT }} # only run under act 
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          output-credentials: true
+
+      - name: Pulumi Output
+        id: pulumi
+        uses: pulumi/actions@v6
+        with:
+          command: output
+          stack-name: dev
+          work-dir: infra/pulumi
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          
+      - name: Deploy to k3s
+        run: |
+          make k8s-remote-up IMAGE_TAG=${{ inputs.image-tag }}
+
+      # TODO: Add smoke tests to validate the deployment
+      # - name: Validate production
+      #   run: |
+      #     make validate-endpoints

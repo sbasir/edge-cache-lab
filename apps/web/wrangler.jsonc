@@ -1,0 +1,23 @@
+{
+  "name": "edge-cache-lab",
+  "compatibility_date": "2026-01-01",
+  "main": "worker/index.ts",
+  "assets": {
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "API_ORIGIN": "https://api.edge.sofybasir.me"
+  },
+  "routes": [
+    {
+      "pattern": "edge.sofybasir.me",
+      "custom_domain": true
+    }
+  ]
+}

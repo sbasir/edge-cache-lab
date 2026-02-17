@@ -1,0 +1,46 @@
+name: Deploy Web to Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**' # only run when web files change
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+permissions:
+    contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Vite app
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: pnpm run build
+        working-directory: apps/web
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          workingDirectory: apps/web
+          command: deploy

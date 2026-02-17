@@ -3,14 +3,16 @@ SHELL := /bin/bash
 GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
 OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
 ACT ?= act
-ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
+ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-24.04-20260215 \
 	--container-architecture linux/amd64 \
 	--pull=false
+
+ACT_WEB_FLAGS = -s CF_API_TOKEN=$(CF_API_TOKEN)
 
 ACT_INFRA_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
 	-s CF_API_TOKEN=$(CF_API_TOKEN) \
 	-s CF_ZONE_ID=$(CF_ZONE_ID) \
-	--var CF_RECORD_NAME=$(CF_RECORD_NAME) \
+	--var CF_API_RECORD_NAME=$(CF_API_RECORD_NAME) \
 	-s AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID \
 	-s AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY \
 	-s AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
@@ -37,6 +39,7 @@ IMAGE_TAG ?= local
 
 K8S_NAMESPACE ?= edge-cache-lab
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
+K8S_OVERLAY_PRODUCTION ?= infra/k8s/overlays/production
 
 PURGE_TOKEN ?= test-purge-token
 
@@ -47,6 +50,7 @@ help:
 	@echo "API:"
 	@echo "  api-init            - Initialize the API module"
 	@echo "  api-install         - Install API dependencies"
+	@echo "  api-update          - Update API dependencies"
 	@echo "  api-run             - Run the API server"
 	@echo "  api-test            - Run tests for the API"
 	@echo "  api-lint            - Run linters for the API"
@@ -83,6 +87,8 @@ help:
 	@echo "  make k8s-port-forward-api      - Port-forward the API service"
 	@echo "  make k8s-port-forward-varnish  - Port-forward the Varnish service"
 	@echo "  make k8s-port-forward-web      - Port-forward the Web service"
+	@echo "  make k8s-lint                  - Lint Kubernetes manifests with KubeLinter"
+	@echo "  make k8s-remote-up             - Deploy to remote k8s cluster"
 	@echo ""
 	@echo "Pulumi / Stack Commands:"
 	@echo "  infra-init                     - Initialize Pulumi stack (defaults to 'dev')"
@@ -92,13 +98,16 @@ help:
 	@echo "  infra-stack-output             - Show stack outputs (plain)"
 	@echo "  infra-stack-output-json        - Show stack outputs as JSON"
 	@echo "  infra-replace-instance         - Replace the Spot instance resource with a fresh instance (preserves EIP)"
-	@echo "  infra-up-and-sync              - Run 'make infra-up --yes' then 'make infra-set-dns' (convenience)"
+	@echo "  infra-up-and-set-dns           - Run 'make infra-up --yes' then 'make infra-set-dns' (convenience)"
+	@echo "  infra-deploy-logs              - Tail CloudFormation logs during instance bootstrap (requires instance_id in stack outputs)"
+	@echo "  infra-ec2-connect              - Connect to the EC2 instance using SSM Session Manager (requires instance_id in stack outputs)"
+	@echo "  infra-ec2-port-forward         - Port-forward to the EC2 instance using SSM Session Manager (requires instance_id in stack outputs)"
 	@echo "  infra-github-actions-oidc-role - Create GitHub Actions IAM Role"
 	@echo ""
 	@echo "Cloudflare DNS helpers:"
-	@echo "  infra-set-dns                  - Upsert A record for $(CF_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
+	@echo "  infra-set-dns                  - Upsert A record for $(CF_API_RECORD_NAME) to the stack public IP (requires CF_API_TOKEN + CF_ZONE_ID)"
 	@echo "  infra-set-dns-dry              - Dry-run: show what would be updated but do not modify DNS (useful to preview)"
-	@echo "  infra-remove-dns               - Remove A record for $(CF_RECORD_NAME) from Cloudflare"
+	@echo "  infra-remove-dns               - Remove A record for $(CF_API_RECORD_NAME) from Cloudflare"
 	@echo ""	
 	@echo "CI:"
 	@echo "  app-ci                         - Run API CI checks locally"
@@ -111,9 +120,12 @@ help:
 	@echo "  gh-act-infra-up                - Run the 'infra-up.yaml' GitHub Actions workflow locally using 'act'"
 	@echo "  gh-act-infra-preview           - Run the 'infra-preview.yaml' GitHub Actions workflow locally using 'act'"
 	@echo "  gh-act-infra-destroy FORCE     - Run the 'infra-destroy.yaml' GitHub Actions workflow locally using 'act'. Use FORCE=true to skip confirmation prompt in destroy workflow."
-
+	@echo "  gh-act-web-deploy              - Run the 'web-deploy.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-app-publish             - Run the 'app-publish.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-k8s-deploy              - Run the 'k8s-deploy.yaml' GitHub Actions workflow locally using 'act'"
 	@echo ""
 	@echo "Testing:"
+	@echo "  infra-validate-k3s             - Validate k3s installation on the EC2 instance (requires instance_id in stack outputs)"
 	@echo "  validate-endpoints PORT        - Validate all API endpoints (default PORT=6081)"
 
 .PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
@@ -255,6 +267,19 @@ k8s-lint:
 	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
 	@kube-linter lint infra/k8s
 
+k8s-remote-up:
+	@if [ $(IMAGE_TAG) = "local" ]; then \
+		echo "Error: IMAGE_TAG cannot be 'local' for remote deployment. Please specify a valid image tag (e.g., 'make k8s-remote-up IMAGE_TAG=v1.0.0')"; \
+		exit 1; \
+	fi;
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	cd ../../ && bash infra/scripts/deploy-k8s.sh \
+		--instance-id $$id \
+		--overlay-path $(K8S_OVERLAY_PRODUCTION) \
+		--image-uri ghcr.io/sbasir/edge-cache-lab-api \
+		--image-tag $(IMAGE_TAG)
+
 # Pulumi and stack management targets
 
 .PHONY: infra-init infra-preview infra-up infra-destroy infra-stack-output infra-stack-output-json infra-github-actions-oidc-role
@@ -310,12 +335,12 @@ infra-up-set-dns:
 	@$(MAKE) infra-set-dns
 
 infra-github-actions-oidc-role:
+	@command -v rain >/dev/null 2>&1 || { echo "`rain` is required to deploy GitHub Actions OIDC Role. Install rain (brew install rain)"; exit 1; } ;
+	@command -v aws >/dev/null 2>&1 || { echo "AWS CLI is required to retrieve OIDC Role ARN after deployment. Install AWS CLI (https://aws.amazon.com/cli/)"; exit 1; } ;
 	@cd infra && \
-	aws cloudformation deploy \
-		--template-file github-actions-oidc-role.yaml \
-		--stack-name EdgeCacheLabGitHubActionsOIDC \
-		--color on \
-		--capabilities CAPABILITY_NAMED_IAM && \
+	rain deploy github-actions-oidc-role.yaml \
+		EdgeCacheLabGitHubActionsOIDC \
+		--yes && \
 	aws cloudformation describe-stacks \
 		--stack-name=EdgeCacheLabGitHubActionsOIDC \
 		--query 'Stacks[0].Outputs[?OutputKey == `GitHubActionsRoleArn`].OutputValue' \
@@ -324,7 +349,7 @@ infra-github-actions-oidc-role:
 
 # Instance and SSM helper targets
 
-.PHONY: infra-deploy-logs infra-ec2-connect
+.PHONY: infra-deploy-logs infra-ec2-connect infra-ec2-port-forward infra-validate-k3s
 
 infra-deploy-logs:
 	@echo "📊 Monitoring bootstrap progress:"
@@ -332,9 +357,15 @@ infra-deploy-logs:
 	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --document-name AWS-StartInteractiveCommand --parameters 'command=["sudo su -c \"tail -n 50 -f /var/log/cloud-init-output.log\""]' --region $(REGION)
 
-infra-ec2-connect:
+infra-ec2-port-forward:
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
 	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --region $(REGION) --document-name AWS-StartPortForwardingSession \
+    --parameters 'localPortNumber=6443,portNumber=6443'
+
+infra-ec2-connect:
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --region $(REGION)
 
 infra-validate-k3s:
@@ -388,7 +419,7 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy gh-act-web-deploy
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
@@ -430,3 +461,24 @@ gh-act-infra-destroy: gh-dependencies
 		$(ACT_FLAGS) \
 		$(ACT_INFRA_FLAGS) \
 		--env FORCE=$(FORCE)
+
+gh-act-web-deploy: gh-dependencies
+	@$(ACT) -W .github/workflows/web-deploy.yaml \
+		$(ACT_FLAGS) \
+		$(ACT_WEB_FLAGS)
+
+gh-act-app-publish: gh-dependencies
+	@$(ACT) -W .github/workflows/app-publish.yaml \
+		$(ACT_FLAGS) \
+		-s GITHUB_TOKEN=$(gh auth token)
+
+gh-act-k8s-deploy: gh-dependencies
+	@if [ $(IMAGE_TAG) = "local" ]; then \
+		echo "Error: IMAGE_TAG cannot be 'local' for remote deployment. Please specify a valid image tag (e.g., 'make gh-act-k8s-deploy IMAGE_TAG=v1.0.0')"; \
+		exit 1; \
+	fi; && \
+	$(ACT) workflow_dispatch \
+		-W .github/workflows/k8s-deploy.yaml \
+		$(ACT_FLAGS) \
+		-s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
+		--input image-tag=$(IMAGE_TAG)
