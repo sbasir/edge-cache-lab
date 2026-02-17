@@ -43,6 +43,7 @@ command_exists kubectl
 command_exists kustomize
 
 echo "Trying to connect using aws ssm start-session..."
+SSM_PID=""
 if nc_check "localhost" "6443"; then
     echo "   ✅ localhost:6443 is already reachable"
 else
@@ -73,18 +74,17 @@ KUBECONFIG_B64=$(aws ssm get-parameter --name "/edge-cache-lab/k3s/kubeconfig" -
   --query 'Parameter.Value' --output text 2>/dev/null)
 
 if [ -z "$KUBECONFIG_B64" ]; then
-  echo "❌ Could not retrieve kubeconfig from SSM (/k3s/kubeconfig)"
+  echo "❌ Could not retrieve kubeconfig from SSM (/edge-cache-lab/k3s/kubeconfig)"
   exit 1
 fi
 
 TMP_DIR=$(mktemp -d)
-SSM_PID=""
 
 KUBECONFIG_FILE="$TMP_DIR/kubeconfig"
 echo "$KUBECONFIG_B64" | base64 -d > "$KUBECONFIG_FILE"
 chmod 600 "$KUBECONFIG_FILE"
-sed -E -i.bak "s/127.0.0.1/$PRIVATE_IP/" "$KUBECONFIG_FILE"
-rm -f "$KUBECONFIG_FILE.bak"
+sed -E "s/127.0.0.1/$PRIVATE_IP/" "$KUBECONFIG_FILE" > "${KUBECONFIG_FILE}.tmp"
+mv "${KUBECONFIG_FILE}.tmp" "$KUBECONFIG_FILE"
 
 OVERLAY_DIR="$(pwd)/$OVERLAY_PATH"
 KUSTOMIZATION_FILE="$OVERLAY_DIR/kustomization.yaml"

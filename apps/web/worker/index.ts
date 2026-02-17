@@ -5,13 +5,14 @@ export default {
     // Route /api/* to the backend
     if (url.pathname.startsWith('/api/')) {
       const apiUrl = new URL(url);
-      apiUrl.host = new URL(env.API_ORIGIN).host;
-      apiUrl.protocol = new URL(env.API_ORIGIN).protocol;
+      const apiOrigin = new URL(env.API_ORIGIN);
+      apiUrl.host = apiOrigin.host;
+      apiUrl.protocol = apiOrigin.protocol;
       
       return fetch(apiUrl, request);
     }
-    
-    // Everything else goes to SPA
-		return new Response(null, { status: 404 });
+
+    // Everything else goes to SPA: delegate to Cloudflare asset handling (SPA behavior configured in wrangler.jsonc)
+    return (env as any).ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;

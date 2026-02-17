@@ -145,6 +145,8 @@ make gh-act-all-ci
       - `gh variable set CF_API_RECORD_NAME -r sbasir/edge-cache-lab -b api.edge.example.com`
     - `AWS_REGION` - AWS region for deployment (e.g., us-east-1)
       - `gh variable set AWS_REGION -r sbasir/edge-cache-lab -b us-east-1`
+    - `API_BASE_URL` - Base URL for the API (used in web frontend build)
+      - `gh variable set API_BASE_URL -r sbasir/edge-cache-lab -b https://api.edge.example.com`
 5. **Deploy via GitHub Actions**:
    - Go to Actions → "Pulumi Up" workflow
    - Click "Run workflow"
