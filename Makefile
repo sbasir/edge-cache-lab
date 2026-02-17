@@ -39,6 +39,7 @@ IMAGE_TAG ?= local
 
 K8S_NAMESPACE ?= edge-cache-lab
 K8S_OVERLAY_LOCAL ?= infra/k8s/overlays/local
+K8S_OVERLAY_PRODUCTION ?= infra/k8s/overlays/production
 
 PURGE_TOKEN ?= test-purge-token
 
@@ -258,6 +259,19 @@ k8s-lint:
 	@command -v kube-linter > /dev/null || (echo "KubeLinter not found, please install it (https://docs.kubelinter.io/)" && exit 1)
 	@kube-linter lint infra/k8s
 
+k8s-remote-up:
+	@if [ $(IMAGE_TAG) = "local" ]; then \
+		echo "Error: IMAGE_TAG cannot be 'local' for remote deployment. Please specify a valid image tag (e.g., 'make k8s-remote-up IMAGE_TAG=v1.0.0')"; \
+		exit 1; \
+	fi;
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
+	cd ../../ && bash infra/scripts/deploy-k8s.sh \
+		--instance-id $$id \
+		--overlay-path $(K8S_OVERLAY_PRODUCTION) \
+		--image-uri ghcr.io/sbasir/edge-cache-lab-api \
+		--image-tag $(IMAGE_TAG)
+
 # Pulumi and stack management targets
 
 .PHONY: infra-init infra-preview infra-up infra-destroy infra-stack-output infra-stack-output-json infra-github-actions-oidc-role
@@ -338,6 +352,12 @@ infra-deploy-logs:
 infra-ec2-connect:
 	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
 	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make infra-stack-output'"; exit 1; fi; \
+	$(AWS) ssm start-session --target $$id --region $(REGION) --document-name AWS-StartPortForwardingSession \
+    --parameters 'localPortNumber=6443,portNumber=6443'
+
+infra-ec2-port-forward:
+	@cd infra/pulumi && id=$$($(PULUMI) stack output instance_id 2>/dev/null); \
+	if [ -z "$$id" ]; then echo "No instance_id in stack outputs. See 'make pulumi-stack-output'"; exit 1; fi; \
 	$(AWS) ssm start-session --target $$id --region $(REGION)
 
 infra-validate-k3s:

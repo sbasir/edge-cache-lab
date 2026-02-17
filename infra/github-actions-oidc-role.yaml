@@ -25,25 +25,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:*
-                  - iam:RemoveRoleFromInstanceProfile
-                  - iam:DeleteInstanceProfile
-                  - iam:ListInstanceProfilesForRole
                 Resource: '*'
               - Effect: Allow
                 Action:
-                  - iam:CreateRole
-                  - iam:DeleteRole
-                  - iam:GetRole
-                  - iam:UpdateRole
-                  - iam:TagRole
-                  - iam:UntagRole
-                  - iam:AttachRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:PutRolePolicy
-                  - iam:DeleteRolePolicy
+                  - iam:*
                 Resource:
                   - !Sub arn:aws:iam::${AWS::AccountId}:role/edge-cache-lab-*
                   - !Sub arn:aws:iam::${AWS::AccountId}:policy/edge-cache-lab-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:instance-profile/edge-cache-lab-*
               - Effect: Allow
                 Action:
                   - ssm:GetParameter
@@ -51,15 +40,7 @@ Resources:
                 Resource: !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/edge-cache-lab/*
               - Effect: Allow
                 Action:
-                  - s3:CreateBucket
-                  - s3:DeleteBucket
-                  - s3:GetBucket*
-                  - s3:PutBucket*
-                  - s3:ListBucket
-                  - s3:ListAllMyBuckets
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
+                  - s3:*
                 Resource:
                   - !Sub arn:aws:s3:::edge-cache-lab-*
                   - !Sub arn:aws:s3:::edge-cache-lab-*/*

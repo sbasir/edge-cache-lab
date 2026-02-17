@@ -1,0 +1,57 @@
+name: k8s Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: 'Docker image tag to deploy (e.g., "latest" or "v1.0.0")'
+        required: true
+        default: 'latest'
+
+jobs:
+  
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install kustomize
+        run: |
+          curl -sSL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          sudo mv kustomize /usr/local/bin/kustomize
+
+      - name: Install session-manager-plugin
+        run: |
+          curl -sSL https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb -o /tmp/session-manager-plugin.deb
+          sudo dpkg -i /tmp/session-manager-plugin.deb
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Deploy with Pulumi
+        id: pulumi
+        uses: pulumi/actions@v6
+        with:
+          command: output
+          stack-name: dev
+          work-dir: infra/pulumi
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          
+      - name: Deploy to k3s
+        run: |
+          make k8s-remote-up IMAGE_TAG=${{ inputs.image-tag }}
+
+      - name: Validate production
+        run: |
+          make k8s-validate-production

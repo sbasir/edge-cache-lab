@@ -4,12 +4,9 @@ name: Create and publish Docker images
 # Configures this workflow to run every time a change is pushed to the branch called `main`.
 on:
   push:
-    branches: [main, phase-8-complete-deployment-cdn]
-  workflow_dispatch: # allow manual trigger from GitHub UI
-
-# Defines two custom environment variables for the workflow. These are used for the Container registry domain, and a name for the Docker image that this workflow builds.
-env:
-  REGISTRY: ghcr.io
+    tags:
+      - 'v*.*.*' # only run when a tag starting with 'v' followed by three sets of numbers is pushed
+      - 'latest' # also run when a tag named 'latest' is pushed
 
 # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
 permissions:
@@ -18,10 +15,11 @@ permissions:
   attestations: write
   id-token: write
 
-jobs:
+jobs:      
   build-and-push-api-image:
     runs-on: ubuntu-latest
     env:
+      REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}-api
     steps:
       - name: Checkout repository
