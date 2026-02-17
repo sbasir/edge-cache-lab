@@ -19,7 +19,7 @@ spec:
   #     secretName: varnish-tls
   rules:
     # Remove the host field to accept any hostname
-    - host: api.edge.sofybasir.me
+    - host: api.example.com
       http:
         paths:
           - path: /

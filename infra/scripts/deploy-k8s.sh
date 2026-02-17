@@ -110,7 +110,7 @@ if ! kustomize edit set image "edge-cache-lab-api=${IMAGE_URI}:${IMAGE_TAG}"; th
 fi
 
 # Apply kustomize overlay
-kubectl --kubeconfig "$KUBECONFIG_FILE" apply -k .
+kubectl --kubeconfig "$KUBECONFIG_FILE" apply -k "$OVERLAY_DIR"
 kubectl --kubeconfig "$KUBECONFIG_FILE" rollout status deployment/api -n edge-cache-lab --timeout=120s
 
 echo "✅ Deployment complete (image: ${IMAGE_URI}:${IMAGE_TAG})"
