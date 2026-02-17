@@ -1,5 +1,5 @@
-#
 name: Create and publish Docker images
+run-name: "Build and publish API image (tag: ${{ github.ref_name }})"
 
 # Configures this workflow to run every time a change is pushed to the branch called `main`.
 on:

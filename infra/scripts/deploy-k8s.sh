@@ -104,12 +104,13 @@ trap '
 ' EXIT
 
 cd "$OVERLAY_DIR" || { echo "❌ Could not change directory to $OVERLAY_DIR"; exit 1; }
-if ! kustomize edit set image "api=${IMAGE_URI}:${IMAGE_TAG}"; then
+if ! kustomize edit set image "edge-cache-lab-api=${IMAGE_URI}:${IMAGE_TAG}"; then
   echo "❌ Failed to update kustomization with image tag"
   exit 1
 fi
 
 # Apply kustomize overlay
-kubectl --kubeconfig "$KUBECONFIG_FILE" apply -k "$OVERLAY_DIR"
+kubectl --kubeconfig "$KUBECONFIG_FILE" apply -k .
+kubectl --kubeconfig "$KUBECONFIG_FILE" rollout status deployment/api -n edge-cache-lab --timeout=120s
 
 echo "✅ Deployment complete (image: ${IMAGE_URI}:${IMAGE_TAG})"

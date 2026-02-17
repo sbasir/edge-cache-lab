@@ -1,4 +1,5 @@
 name: k8s Deploy
+run-name: "Deploy to k3s (tag: ${{ inputs.image-tag }})"
 
 on:
   workflow_dispatch:

@@ -18,7 +18,7 @@ kind: Kustomization
 resources:
   - ../../base
 images:
-  - name: api
+  - name: edge-cache-lab-api
     newName: edge-cache-lab-api
     newTag: k8s
 
