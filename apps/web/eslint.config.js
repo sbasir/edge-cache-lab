@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default [
-  { ignores: ['dist', 'src/api/**'] }, // Exclude generated code
+  { ignores: ['dist', 'src/api/**', 'worker/**', 'worker-configuration.d.ts'] }, // Exclude generated code
   // typescript-eslint.configs.recommended is an array and must be spread at top level
   ...tseslint.configs.recommended,
   {

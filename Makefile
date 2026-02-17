@@ -438,3 +438,8 @@ gh-act-web-deploy: gh-dependencies
 	@$(ACT) -W .github/workflows/web-deploy.yaml \
 		$(ACT_FLAGS) \
 		$(ACT_WEB_FLAGS)
+
+gh-act-publish: gh-dependencies
+	@$(ACT) -W .github/workflows/publish.yaml \
+		$(ACT_FLAGS) \
+		-s GITHUB_TOKEN=$(gh auth token)
