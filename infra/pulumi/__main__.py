@@ -256,28 +256,28 @@ ec2_sg = ec2.SecurityGroup(
     tags={"Name": f"{prefix}-sg"},
 )
 
-# Ingress: HTTPS (443) for API access (IPv4)
+# Ingress: HTTP (80) for API access (IPv4)
 _api_ingress_ipv4 = ec2.SecurityGroupRule(
     f"{prefix}-ingress-ipv4",
     type="ingress",
-    from_port=443,
-    to_port=443,
+    from_port=80,
+    to_port=80,
     protocol="tcp",
     cidr_blocks=["0.0.0.0/0"],
     security_group_id=ec2_sg.id,
-    description="API HTTPS port (IPv4)",
+    description="API HTTP port (IPv4)",
 )
 
-# Ingress: HTTPS (443) for API access (IPv6)
+# Ingress: HTTP (80) for API access (IPv6)
 _api_ingress_ipv6 = ec2.SecurityGroupRule(
     f"{prefix}-ingress-ipv6",
     type="ingress",
-    from_port=443,
-    to_port=443,
+    from_port=80,
+    to_port=80,
     protocol="tcp",
     ipv6_cidr_blocks=["::/0"],
     security_group_id=ec2_sg.id,
-    description="API HTTPS port (IPv6)",
+    description="API HTTP port (IPv6)",
 )
 
 # Egress: Allow all outbound traffic (required for SSM, package updates, etc.)
