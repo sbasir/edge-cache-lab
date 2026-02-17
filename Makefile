@@ -313,12 +313,12 @@ infra-up-set-dns:
 	@$(MAKE) infra-set-dns
 
 infra-github-actions-oidc-role:
+	@command -v rain >/dev/null 2>&1 || { echo "`rain` is required to deploy GitHub Actions OIDC Role. Install rain (brew install rain)"; exit 1; } ;
+	@command -v aws >/dev/null 2>&1 || { echo "AWS CLI is required to retrieve OIDC Role ARN after deployment. Install AWS CLI (https://aws.amazon.com/cli/)"; exit 1; } ;
 	@cd infra && \
-	aws cloudformation deploy \
-		--template-file github-actions-oidc-role.yaml \
-		--stack-name EdgeCacheLabGitHubActionsOIDC \
-		--color on \
-		--capabilities CAPABILITY_NAMED_IAM && \
+	rain deploy github-actions-oidc-role.yaml \
+		EdgeCacheLabGitHubActionsOIDC \
+		--yes && \
 	aws cloudformation describe-stacks \
 		--stack-name=EdgeCacheLabGitHubActionsOIDC \
 		--query 'Stacks[0].Outputs[?OutputKey == `GitHubActionsRoleArn`].OutputValue' \

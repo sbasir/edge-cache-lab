@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
+
 Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
@@ -15,7 +16,7 @@ Resources:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
-                token.actions.githubusercontent.com:sub: "repo:sbasir/edge-cache-lab:*"
+                token.actions.githubusercontent.com:sub: repo:sbasir/edge-cache-lab:*
       Policies:
         - PolicyName: PulumiDeploymentPolicy
           PolicyDocument:
@@ -27,7 +28,7 @@ Resources:
                   - iam:RemoveRoleFromInstanceProfile
                   - iam:DeleteInstanceProfile
                   - iam:ListInstanceProfilesForRole
-                Resource: "*"
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - iam:CreateRole
@@ -41,13 +42,13 @@ Resources:
                   - iam:PutRolePolicy
                   - iam:DeleteRolePolicy
                 Resource:
-                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/edge-cache-lab-*"
-                  - !Sub "arn:aws:iam::${AWS::AccountId}:policy/edge-cache-lab-*"
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/edge-cache-lab-*
+                  - !Sub arn:aws:iam::${AWS::AccountId}:policy/edge-cache-lab-*
               - Effect: Allow
                 Action:
                   - ssm:GetParameter
                   - ssm:PutParameter
-                Resource: !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/edge-cache-lab/*"
+                Resource: !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/edge-cache-lab/*
               - Effect: Allow
                 Action:
                   - s3:CreateBucket
@@ -60,26 +61,27 @@ Resources:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource:
-                  - !Sub "arn:aws:s3:::edge-cache-lab-*"
-                  - !Sub "arn:aws:s3:::edge-cache-lab-*/*"
+                  - !Sub arn:aws:s3:::edge-cache-lab-*
+                  - !Sub arn:aws:s3:::edge-cache-lab-*/*
               - Effect: Allow
                 Action:
                   - ssm:SendCommand
-                Resource: 
-                  - !Sub "arn:aws:ec2:*:${AWS::AccountId}:instance/*"
-                  - "arn:aws:ssm:*::document/AWS-RunShellScript"
+                Resource:
+                  - !Sub arn:aws:ec2:*:${AWS::AccountId}:instance/*
+                  - arn:aws:ssm:*::document/AWS-RunShellScript
               - Effect: Allow
                 Action:
                   - ssm:GetCommandInvocation
-                Resource: !Sub "arn:aws:ssm:*:${AWS::AccountId}:*"
+                Resource: !Sub arn:aws:ssm:*:${AWS::AccountId}:*
               - Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/edge-cache-lab-role"
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/edge-cache-lab-role
                 Condition:
                   StringEquals:
                     iam:PassedToService: ec2.amazonaws.com
+
 Outputs:
   GitHubActionsRoleArn:
-    Description: "ARN of the GitHub Actions Deploy Role"
+    Description: ARN of the GitHub Actions Deploy Role
     Value: !GetAtt GitHubActionsRole.Arn
