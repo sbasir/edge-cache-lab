@@ -8,7 +8,14 @@ export default {
       apiUrl.pathname = url.pathname.slice(4); // Remove '/api' prefix
       apiUrl.search = url.search;
       
-      return fetch(apiUrl, request);
+      // Create new request with corrected URL and headers
+      const apiRequest = new Request(apiUrl, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      });
+      
+      return fetch(apiRequest);
     }
 
     // Everything else goes to SPA: delegate to Cloudflare asset handling (SPA behavior configured in wrangler.jsonc)

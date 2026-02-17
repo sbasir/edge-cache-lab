@@ -16,8 +16,8 @@
   },
   "routes": [
     {
-      "pattern": "edge.sofybasir.me",
-      "custom_domain": true
+      "pattern": "edge.sofybasir.me/*",
+      "zone_name": "sofybasir.me"
     }
   ]
 }
