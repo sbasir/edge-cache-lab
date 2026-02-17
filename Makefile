@@ -7,6 +7,8 @@ ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
 	--container-architecture linux/amd64 \
 	--pull=false
 
+ACT_WEB_FLAGS = -s CF_API_TOKEN=$(CF_API_TOKEN)
+
 ACT_INFRA_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
 	-s CF_API_TOKEN=$(CF_API_TOKEN) \
 	-s CF_ZONE_ID=$(CF_ZONE_ID) \
@@ -111,6 +113,7 @@ help:
 	@echo "  gh-act-infra-up                - Run the 'infra-up.yaml' GitHub Actions workflow locally using 'act'"
 	@echo "  gh-act-infra-preview           - Run the 'infra-preview.yaml' GitHub Actions workflow locally using 'act'"
 	@echo "  gh-act-infra-destroy FORCE     - Run the 'infra-destroy.yaml' GitHub Actions workflow locally using 'act'. Use FORCE=true to skip confirmation prompt in destroy workflow."
+	@echo "  gh-act-web-deploy              - Run the 'web-deploy.yaml' GitHub Actions workflow locally using 'act'"
 
 	@echo ""
 	@echo "Testing:"
@@ -388,7 +391,7 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy gh-act-web-deploy
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
@@ -430,3 +433,8 @@ gh-act-infra-destroy: gh-dependencies
 		$(ACT_FLAGS) \
 		$(ACT_INFRA_FLAGS) \
 		--env FORCE=$(FORCE)
+
+gh-act-web-deploy: gh-dependencies
+	@$(ACT) -W .github/workflows/web-deploy.yaml \
+		$(ACT_FLAGS) \
+		$(ACT_WEB_FLAGS)

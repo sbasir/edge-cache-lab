@@ -129,7 +129,13 @@ make gh-act-all-ci
     - Get from Pulumi Cloud dashboard → Account Settings → Access Tokens
     - `gh secret set PULUMI_ACCESS_TOKEN -r sbasir/edge-cache-lab --body "<your-pulumi-access-token>"`
   - `CF_API_TOKEN` - Cloudflare API token
-    - Create a token with "Zone:Zone:Read", "Zone:DNS:Edit" permissions for your zone in the Cloudflare dashboard → My Profile → API Tokens
+    - Create a token for your zone in the Cloudflare dashboard → My Profile → API Tokens with permissions:
+      - Zone:Zone:Read
+      - Zone:DNS:Edit
+      - Zone:Workers Routes:Edit
+      - User:Membership:Read
+      - User:User Details:Read
+      - Account:Workers Scripts:Edit
     - `gh secret set CF_API_TOKEN -r sbasir/edge-cache-lab --body "<your-cloudflare-api-token>"`
   - `CF_ZONE_ID` - Cloudflare zone ID
     - Get from Cloudflare dashboard → Overview → API → Zone ID
