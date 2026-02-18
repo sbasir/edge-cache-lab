@@ -4,20 +4,28 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/web/**' # only run when web files change
-  workflow_dispatch: # allow manual trigger from GitHub UI
+      - 'apps/web/**'
+      - '.github/workflows/web-deploy.yaml'
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
+
+# Prevent concurrent deployments
+concurrency:
+  group: cloudflare-deploy-web
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.29.3
 

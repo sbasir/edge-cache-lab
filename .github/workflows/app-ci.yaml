@@ -4,10 +4,23 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'apps/api/**'
+      - 'openapi/**'
+      - '.github/workflows/app-ci.yaml'
   pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'openapi/**'
+      - '.github/workflows/app-ci.yaml'
 
 permissions:
   contents: read
+
+# Cancel in-progress runs for PRs, but not for main branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   api:
@@ -21,8 +34,7 @@ jobs:
         with:
           go-version: '1.26.0'
           cache: true
-          cache-dependency-path: |
-            apps/api/go.sum
+          cache-dependency-path: apps/api/go.sum
 
       - name: Install tooling
         run: |
@@ -36,6 +48,7 @@ jobs:
 
       - name: OpenAPI codegen
         run: make openapi
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
