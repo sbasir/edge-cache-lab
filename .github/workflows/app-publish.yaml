@@ -1,10 +1,17 @@
 name: Build and Publish Container Images
-run-name: "Build and publish images (tag: ${{ github.ref_name }})"
+run-name: "Build and publish images"
 
 on:
   push:
     tags:
       - 'v*.*.*' # Semantic version tags (e.g., v1.2.3)
+      - 'v*.*.*-*' # Semantic version tags with suffix (e.g., v1.2.3-test)
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Tag to publish (e.g., v1.2.3 or v1.2.3-test)"
+        required: true
+        type: string
 
 # Least privilege permissions: read-only by default
 permissions:
@@ -39,8 +46,28 @@ jobs:
       IMAGE_NAME: ${{ github.repository }}-${{ matrix.component }}
     
     steps:
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            tag="${{ inputs.release_tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid release tag '$tag'. Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-SUFFIX"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs.tag }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -52,16 +79,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Extract metadata (tags, labels)
+      - name: Compute image tags
+        id: image-tags
+        shell: bash
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+
+          tags=("${IMAGE}:${version}")
+          if [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            tags+=("${IMAGE}:${major}.${minor}")
+            tags+=("${IMAGE}:${major}")
+          fi
+
+          {
+            echo "tags<<EOF"
+            printf '%s\n' "${tags[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Extract metadata (labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
       
       - name: Build and push Docker image
         id: push
@@ -70,7 +117,7 @@ jobs:
           context: ${{ matrix.context }}
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.image-tags.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

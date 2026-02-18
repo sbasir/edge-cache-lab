@@ -23,6 +23,8 @@ jobs:
   tag:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) }}
     runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.compute.outputs.new_tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -70,12 +72,16 @@ jobs:
           echo "Computed new tag: $new_tag"
 
       - name: Create and push tag
-        if: ${{ !env.ACT }}
         env:
           NEW_TAG: ${{ steps.compute.outputs.new_tag }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ "${ACT:-}" = "true" ]; then
+            echo "ACT environment detected - skipping tag creation."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -84,7 +90,7 @@ jobs:
 
       - name: Summary
         run: |
-          if [ "${{ env.ACT }}" = "true" ]; then
+          if [ "${ACT:-}" = "true" ]; then
             echo "ACT environment detected - skipping tag creation."
             echo "Computed tag: ${{ steps.compute.outputs.new_tag }}"
             echo "Based on latest semver: ${{ steps.compute.outputs.latest_base_tag }}"
@@ -92,3 +98,10 @@ jobs:
           fi
           echo "Created tag: ${{ steps.compute.outputs.new_tag }}"
           echo "Based on latest semver: ${{ steps.compute.outputs.latest_base_tag }}"
+
+  publish:
+    needs: tag
+    uses: ./.github/workflows/app-publish.yaml
+    with:
+      release_tag: ${{ needs.tag.outputs.new_tag }}
+    secrets: inherit
