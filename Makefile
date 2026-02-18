@@ -80,7 +80,6 @@ help:
 	@echo "  docker-logs         - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
-	@echo "  make k8s-varnish-vcl-sync      - Generate Kubernetes VCL from template"
 	@echo "  make k8s-local-up              - Deploy to local k8s (e.g., OrbStack) or Docker environment"
 	@echo "  make k8s-local-down            - Remove local k8s resources (namespace, local image)"
 	@echo "  make k8s-wait                  - Wait for deployment rollout to complete"
@@ -124,6 +123,7 @@ help:
 	@echo "  gh-act-infra-destroy FORCE     - Run the 'infra-destroy.yaml' GitHub Actions workflow locally using 'act'. Use FORCE=true to skip confirmation prompt in destroy workflow."
 	@echo "  gh-act-web-deploy              - Run the 'web-deploy.yaml' GitHub Actions workflow locally using 'act'"
 	@echo "  gh-act-app-publish             - Run the 'app-publish.yaml' GitHub Actions workflow locally using 'act'"
+	@echo "  gh-act-app-ci                  - Run the 'app-ci.yaml' GitHub Actions workflow locally using 'act'"
 	@echo "  gh-act-k8s-deploy              - Run the 'k8s-deploy.yaml' GitHub Actions workflow locally using 'act'"
 	@echo ""
 	@echo "Testing:"
@@ -235,13 +235,11 @@ docker-down:
 docker-logs:
 	@docker compose logs -f --tail=100
 
-.PHONY: k8s-varnish-vcl-sync k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward-api k8s-port-forward-varnish k8s-lint
+.PHONY: k8s-local-up k8s-local-down k8s-wait k8s-status k8s-logs k8s-port-forward-api k8s-port-forward-varnish k8s-lint
 
-k8s-varnish-vcl-sync:
-	@BACKEND_HOST=api PURGE_TOKEN=$(PURGE_TOKEN) ./apps/varnish/render-k8s-vcl.sh
-
-k8s-local-up: k8s-varnish-vcl-sync
+k8s-local-up:
 	@docker build -t edge-cache-lab-api:k8s apps/api
+	@docker build -t edge-cache-lab-varnish:k8s apps/varnish
 	@docker build -t edge-cache-lab-web:k8s apps/web
 	@kubectl apply -k $(K8S_OVERLAY_LOCAL)
 
@@ -249,6 +247,7 @@ k8s-local-down:
 	@kubectl delete -k $(K8S_OVERLAY_LOCAL) --ignore-not-found
 	@kubectl delete namespace $(K8S_NAMESPACE) --ignore-not-found
 	@docker image rm -f edge-cache-lab-api:k8s > /dev/null 2>&1 || true
+	@docker image rm -f edge-cache-lab-varnish:k8s > /dev/null 2>&1 || true
 	@docker image rm -f edge-cache-lab-web:k8s > /dev/null 2>&1 || true
 
 k8s-wait:
@@ -292,7 +291,8 @@ k8s-remote-up:
 	bash infra/scripts/deploy-k8s.sh \
 		--instance-id $$id \
 		--overlay-path $(K8S_OVERLAY_PRODUCTION) \
-		--image-uri ghcr.io/sbasir/edge-cache-lab-api \
+		--api-image-uri ghcr.io/sbasir/edge-cache-lab-api \
+		--varnish-image-uri ghcr.io/sbasir/edge-cache-lab-varnish \
 		--image-tag $(IMAGE_TAG)
 
 # Pulumi and stack management targets
@@ -434,7 +434,7 @@ validate-endpoints:
 	echo ""; \
 	echo "✓ All endpoints validated successfully on localhost:$(PORT)"
 
-.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy gh-act-web-deploy
+.PHONY: gh-act-app-ci gh-act-k8s-ci gh-act-web-ci gh-act-all-ci gh-dependencies gh-act-infra-up gh-act-infra-preview gh-act-infra-destroy gh-act-web-deploy gh-act-app-publish gh-act-app-tag gh-act-k8s-deploy
 
 gh-act-app-ci:
 	@$(ACT) -W .github/workflows/app-ci.yaml $(ACT_FLAGS)
@@ -490,6 +490,11 @@ gh-act-app-publish: gh-dependencies
 	@$(ACT) -W .github/workflows/app-publish.yaml \
 		$(ACT_FLAGS) \
 		-s GITHUB_TOKEN=$(gh auth token)
+
+gh-act-app-tag: gh-dependencies
+	@$(ACT) workflow_dispatch -W .github/workflows/app-tag.yaml \
+		$(ACT_FLAGS) \
+		--input suffix=act
 
 gh-act-k8s-deploy: gh-dependencies
 	@if [ $(IMAGE_TAG) = "local" ]; then \

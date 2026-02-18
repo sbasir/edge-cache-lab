@@ -38,14 +38,11 @@ backend default {
 ### Kubernetes
 
 Varnish is deployed as a separate pod with:
-- ConfigMap containing VCL configuration
-- Deployment with varnish:8-alpine image (internal port 80)
+- Deployment with `edge-cache-lab-varnish` image (internal port 80)
 - ClusterIP Service on port 80
 
-The Kubernetes VCL is generated from `apps/varnish/default.vcl.template`:
-```bash
-make k8s-varnish-vcl-sync
-```
+At runtime, the container entrypoint renders VCL from `apps/varnish/default.vcl.template`
+using pod environment variables (`BACKEND_HOST`, `PURGE_TOKEN`).
 
 Access via:
 ```bash

@@ -5,22 +5,25 @@ set -euo pipefail
 
 INSTANCE_ID=${INSTANCE_ID:-}
 OVERLAY_PATH=${OVERLAY_PATH:-}
-IMAGE_URI=${IMAGE_URI:-}
+API_IMAGE_URI=${API_IMAGE_URI:-}
+VARNISH_IMAGE_URI=${VARNISH_IMAGE_URI:-}
 IMAGE_TAG=${IMAGE_TAG:-}
 
-# Parse CLI args (allow Makefile to pass --instance-id, --overlay-path, --image-uri, --image-tag)
+# Parse CLI args (allow Makefile to pass --instance-id, --overlay-path, --api-image-uri, --varnish-image-uri, --image-tag)
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --instance-id|-i)
       INSTANCE_ID="$2"; shift 2;;
     --overlay-path|-o)
       OVERLAY_PATH="$2"; shift 2;;
-    --image-uri)
-      IMAGE_URI="$2"; shift 2;;
+    --api-image-uri)
+      API_IMAGE_URI="$2"; shift 2;;
+    --varnish-image-uri)
+      VARNISH_IMAGE_URI="$2"; shift 2;;
     --image-tag)
       IMAGE_TAG="$2"; shift 2;;
     --help|-h)
-      echo "Usage: $(basename "$0") --instance-id ID --overlay-path PATH --image-uri URI --image-tag TAG";
+      echo "Usage: $(basename "$0") --instance-id ID --overlay-path PATH --api-image-uri URI --varnish-image-uri URI --image-tag TAG";
       exit 0;;
     *)
       echo "Unknown argument: $1"; exit 1;;
@@ -30,11 +33,12 @@ done
 missing=()
 [ -z "$INSTANCE_ID" ] && missing+=("instance-id")
 [ -z "$OVERLAY_PATH" ] && missing+=("overlay-path")
-[ -z "$IMAGE_URI" ] && missing+=("image-uri")
+[ -z "$API_IMAGE_URI" ] && missing+=("api-image-uri")
+[ -z "$VARNISH_IMAGE_URI" ] && missing+=("varnish-image-uri")
 [ -z "$IMAGE_TAG" ] && missing+=("image-tag")
 if [ ${#missing[@]} -ne 0 ]; then
   echo "❌ Missing required arguments: ${missing[*]}"
-  echo "Usage: $(basename "$0") --instance-id ID --overlay-path PATH --image-uri URI --image-tag TAG"
+  echo "Usage: $(basename "$0") --instance-id ID --overlay-path PATH --api-image-uri URI --varnish-image-uri URI --image-tag TAG"
   exit 1
 fi
 
@@ -104,13 +108,18 @@ trap '
 ' EXIT
 
 cd "$OVERLAY_DIR" || { echo "❌ Could not change directory to $OVERLAY_DIR"; exit 1; }
-if ! kustomize edit set image "edge-cache-lab-api=${IMAGE_URI}:${IMAGE_TAG}"; then
-  echo "❌ Failed to update kustomization with image tag"
+if ! kustomize edit set image "edge-cache-lab-api=${API_IMAGE_URI}:${IMAGE_TAG}"; then
+  echo "❌ Failed to update kustomization with API image tag"
+  exit 1
+fi
+if ! kustomize edit set image "edge-cache-lab-varnish=${VARNISH_IMAGE_URI}:${IMAGE_TAG}"; then
+  echo "❌ Failed to update kustomization with Varnish image tag"
   exit 1
 fi
 
 # Apply kustomize overlay
 kubectl --kubeconfig "$KUBECONFIG_FILE" apply -k "$OVERLAY_DIR"
-kubectl --kubeconfig "$KUBECONFIG_FILE" rollout status deployment/api -n edge-cache-lab --timeout=120s
+kubectl --kubeconfig "$KUBECONFIG_FILE" rollout status deployment/api -n edge-cache-lab --timeout=60s
+kubectl --kubeconfig "$KUBECONFIG_FILE" rollout status deployment/varnish -n edge-cache-lab --timeout=60s
 
-echo "✅ Deployment complete (image: ${IMAGE_URI}:${IMAGE_TAG})"
+echo "✅ Deployment complete (api: ${API_IMAGE_URI}:${IMAGE_TAG}, varnish: ${VARNISH_IMAGE_URI}:${IMAGE_TAG})"
