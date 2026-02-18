@@ -49,35 +49,36 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "API:"
-	@echo "  api-init            - Initialize the API module"
-	@echo "  api-install         - Install API dependencies"
-	@echo "  api-update          - Update API dependencies"
-	@echo "  api-run             - Run the API server"
-	@echo "  api-test            - Run tests for the API"
-	@echo "  api-lint            - Run linters for the API"
-	@echo "  api-fmt             - Format the API code"
-	@echo "  api-docker-build    - Build the API Docker image"
+	@echo "  api-init               - Initialize the API module"
+	@echo "  api-install            - Install API dependencies"
+	@echo "  api-update             - Update API dependencies"
+	@echo "  api-run                - Run the API server"
+	@echo "  api-test               - Run tests for the API"
+	@echo "  api-lint               - Run linters for the API"
+	@echo "  api-fmt                - Format the API code"
+	@echo "  api-docker-build       - Build the API Docker image"
+	@echo "  varnish-docker-build   - Build the Varnish Docker image"
 	@echo ""
 	@echo "Web:"
-	@echo "  web-install         - Install web dependencies"
-	@echo "  web-generate-client - Generate OpenAPI TypeScript client"
-	@echo "  web-cf-typegen      - Generate Cloudflare types for Wrangler"
-	@echo "  web-run             - Run the web dev server"
-	@echo "  web-build           - Build web for production"
-	@echo "  web-preview         - Preview production build"
-	@echo "  web-lint            - Lint web code"
-	@echo "  web-docker-build    - Build web Docker image"
+	@echo "  web-install            - Install web dependencies"
+	@echo "  web-generate-client    - Generate OpenAPI TypeScript client"
+	@echo "  web-cf-typegen         - Generate Cloudflare types for Wrangler"
+	@echo "  web-run                - Run the web dev server"
+	@echo "  web-build              - Build web for production"
+	@echo "  web-preview            - Preview production build"
+	@echo "  web-lint               - Lint web code"
+	@echo "  web-docker-build       - Build web Docker image"
 	@echo ""
 	@echo "OpenAPI:"
-	@echo "  openapi             - Generate Go code from OpenAPI spec"
-	@echo "  openapi-validate    - Validate OpenAPI spec"
-	@echo "  openapi-diff        - Fail if generated OpenAPI code differs"
+	@echo "  openapi                - Generate Go code from OpenAPI spec"
+	@echo "  openapi-validate       - Validate OpenAPI spec"
+	@echo "  openapi-diff           - Fail if generated OpenAPI code differs"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker-build        - Build the Docker images"
-	@echo "  docker-up           - Start the application using Docker Compose"
-	@echo "  docker-down         - Stop the application and remove containers"
-	@echo "  docker-logs         - Follow the logs of the application"
+	@echo "  docker-build           - Build the Docker images"
+	@echo "  docker-up              - Start the application using Docker Compose"
+	@echo "  docker-down            - Stop the application and remove containers"
+	@echo "  docker-logs            - Follow the logs of the application"
 	@echo ""
 	@echo "Kubernetes:"
 	@echo "  make k8s-local-up              - Deploy to local k8s (e.g., OrbStack) or Docker environment"
@@ -130,7 +131,7 @@ help:
 	@echo "  infra-validate-k3s             - Validate k3s installation on the EC2 instance (requires instance_id in stack outputs)"
 	@echo "  validate-endpoints PORT        - Validate all API endpoints (default PORT=6081)"
 
-.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci
+.PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci varnish-docker-build
 
 api-init:
 	@cd apps/api && if [ ! -f go.mod ]; then go mod init edge-cache-lab/apps/api; fi && \
@@ -183,7 +184,10 @@ openapi-diff: openapi
 api-docker-build:
 	@docker build -t edge-cache-lab-api:$(IMAGE_TAG) apps/api
 
-app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build
+varnish-docker-build:
+	@docker build -t edge-cache-lab-varnish:$(IMAGE_TAG) apps/varnish
+
+app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build varnish-docker-build
 
 .PHONY: web-install web-generate-client web-run web-build web-preview web-lint web-docker-build web-cf-typegen web-ci
 
@@ -497,12 +501,18 @@ gh-act-app-tag: gh-dependencies
 		--input suffix=act
 
 gh-act-k8s-deploy: gh-dependencies
-	@if [ $(IMAGE_TAG) = "local" ]; then \
-		echo "Error: IMAGE_TAG cannot be 'local' for remote deployment. Please specify a valid image tag (e.g., 'make gh-act-k8s-deploy IMAGE_TAG=v1.0.0')"; \
+	@if [ -z "$(REF_TAG)" ]; then \
+		echo "Error: REF_TAG environment variable is required (e.g., REF_TAG=v1.2.3)."; \
 		exit 1; \
-	fi; && \
+	fi;
+	@tmp=$$(mktemp -d) && \
+	echo "Simulating GitHub Actions workflow_dispatch for ref: refs/tags/$(REF_TAG)" && \
+	printf '{\n  "ref": "refs/tags/$(REF_TAG)",\n  "ref_name": "$(REF_TAG)",\n  "ref_type": "tag"\n}\n' > "$$tmp/event.json" && \
+	echo "Event payload:" && \
+	cat "$$tmp/event.json" && \
 	$(ACT) workflow_dispatch \
 		-W .github/workflows/k8s-deploy.yaml \
 		$(ACT_FLAGS) \
-		-s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
-		--input image-tag=$(IMAGE_TAG)
+		$(ACT_INFRA_FLAGS) \
+		-e "$$tmp/event.json" && \
+	rm -rf "$$tmp"

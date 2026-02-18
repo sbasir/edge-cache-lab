@@ -14,7 +14,7 @@ Reverse proxy cache layer for the Edge Cache Lab API.
 ### Kubernetes
 
 Uses the same container image and startup flow as Docker Compose:
-- `docker-entrypoint.sh` renders `/tmp/default.vcl` from `default.vcl.template`
+- `docker-entrypoint.sh` renders `/var/lib/varnish/default.vcl` from `default.vcl.template`
 - `BACKEND_HOST` and `PURGE_TOKEN` are provided via pod environment variables
 
 Backend host: `api` (service name)

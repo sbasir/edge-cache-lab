@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - 'apps/api/**'
+      - 'apps/varnish/**'
       - 'openapi/**'
       - '.github/workflows/app-ci.yaml'
   pull_request:
     paths:
       - 'apps/api/**'
+      - 'apps/varnish/**'
       - 'openapi/**'
       - '.github/workflows/app-ci.yaml'
 
@@ -60,3 +62,6 @@ jobs:
 
       - name: Build API image
         run: make api-docker-build IMAGE_TAG=ci-${{ github.sha }}
+
+      - name: Build Varnish image
+        run: make varnish-docker-build IMAGE_TAG=ci-${{ github.sha }}

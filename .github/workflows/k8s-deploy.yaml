@@ -46,9 +46,14 @@ jobs:
 
     steps:
       - name: Checkout repository
+        if: ${{ !env.ACT }}
         uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
+
+      - name: Checkout repository
+        if: ${{ env.ACT }}
+        uses: actions/checkout@v6       
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
@@ -96,6 +101,7 @@ jobs:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           
       - name: Deploy to k3s cluster
+        if: ${{ !env.ACT }}
         run: |
           echo "Deploying version: ${{ needs.validate-tag.outputs.image_tag }}"
           make k8s-remote-up \
