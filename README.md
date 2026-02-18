@@ -4,7 +4,7 @@ A production-like, fully automated mini e-commerce platform that demonstrates CD
 
 ## Current Status
 
-Phases 0-6 and 9 are implemented and validated locally and in Kubernetes (OpenAPI contract, cache headers, Varnish HIT/MISS/PASS, purge via `PURGE` with `X-Purge-Token`, CI/CD baseline, and frontend SPA).
+Phases 0-9 are implemented and validated locally and in Kubernetes (OpenAPI contract, cache headers, Varnish HIT/MISS/PASS, purge via `PURGE` with `X-Purge-Token`, CI/CD baseline, Pulumi + Cloudflare edge wiring, and frontend SPA).
 
 ## Prerequisites
 
@@ -93,7 +93,7 @@ Generated types live in `apps/api/internal/api/api.gen.go` and handlers in `apps
 
 ## CI/CD
 
-GitHub Actions runs OpenAPI validation, codegen drift checks, lint/test, and a Docker image build for the API.
+GitHub Actions runs OpenAPI validation, codegen drift checks, lint/test, and Docker image builds for app/web workflows.
 
 Local CI runs can be executed with:
 
@@ -111,7 +111,7 @@ make gh-act-all-ci
 ### GitHub Actions Workflows
 
 - **App CI** - Automated linting and testing on PRs and main branch
-- **Web CI** - Automated linting and testing on PRs and main branch
+- **Web CI** - Automated client generation, drift checks, linting, and build on PRs and main branch
 - **K8s CI** - Validate Kubernetes manifests on PRs and main branch
 - **Infra Preview** - Preview infrastructure changes on PRs
 - **Infra Up** - Deploy infrastructure (manual trigger)

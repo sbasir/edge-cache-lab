@@ -108,20 +108,26 @@ GitHub Actions workflow (`.github/workflows/web-ci.yaml`):
 1. Setup Node.js 24 + pnpm
 2. Install dependencies
 3. Generate OpenAPI client
-4. Lint code
-5. Build production bundle
-6. Build Docker image
+4. Fail on generated client drift (`git diff -- apps/web/src/api`)
+5. Lint code
+6. Build production bundle
+7. Build Docker image
 
 ## Best Practices
 
 ### Type Safety
 
-All API calls use generated TypeScript types:
+Use generated OpenAPI models and service artifacts for contract safety:
 ```typescript
 import type { Product } from '../api';
-const response = await fetch(`${OpenAPI.BASE}/product/${id}`);
-const product: Product = await response.json();
+const product: Product = await someProductCall();
 ```
+
+### Current Data-Access Pattern
+
+The current frontend keeps manual response-header capture for cache diagnostics (`X-Cache`, `ETag`, `X-Request-Id`) while using generated OpenAPI types/client artifacts.
+
+This is intentional for the cache lab UX and is being iteratively reduced toward centralized typed request helpers.
 
 ### Error Handling
 
