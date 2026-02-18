@@ -29,8 +29,9 @@ jobs:
             exit 1
           fi
           
-          echo "image_tag=$REF_NAME" >> "$GITHUB_OUTPUT"
-          echo "✓ Valid semantic version tag: $REF_NAME"
+          version="${REF_NAME#v}"
+          echo "image_tag=$version" >> "$GITHUB_OUTPUT"
+          echo "✓ Valid semantic version tag: $REF_NAME -> image tag: $version"
   
   deploy:
     needs: validate-tag
