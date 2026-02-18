@@ -11,6 +11,11 @@ on:
         description: "Optional suffix to append to latest semver tag (e.g., testing => v1.2.3-testing)"
         required: false
         default: ""
+      publish_after_tag:
+        description: "Trigger image publish after creating the tag"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -100,7 +105,14 @@ jobs:
           echo "Based on latest semver: ${{ steps.compute.outputs.latest_base_tag }}"
 
   publish:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_after_tag }}
     needs: tag
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      security-events: write
     uses: ./.github/workflows/app-publish.yaml
     with:
       release_tag: ${{ needs.tag.outputs.new_tag }}
