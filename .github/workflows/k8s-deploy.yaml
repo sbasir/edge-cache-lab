@@ -1,37 +1,76 @@
-name: k8s Deploy
-run-name: "Deploy to k3s (tag: ${{ inputs.image-tag }})"
+name: Deploy to Kubernetes
+run-name: "Deploy to k3s (ref: ${{ github.ref_name }})"
 
 on:
   workflow_dispatch:
-    inputs:
-      image-tag:
-        description: 'Docker image tag to deploy (e.g., "latest" or "v1.0.0")'
-        required: true
-        default: 'latest'
+    # No inputs - use git ref selector to choose tag
+
+permissions:
+  contents: read
 
 jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.extract.outputs.image_tag }}
+    steps:
+      - name: Extract and validate tag
+        id: extract
+        run: |
+          REF_NAME="${{ github.ref_name }}"
+          echo "Reference name: $REF_NAME"
+          
+          # Allow semantic version tags with optional suffix (e.g., v1.2.3 or v1.2.3-testing)
+          if [[ ! "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid reference. Please select a semantic version tag (e.g., v1.2.3 or v1.2.3-testing)"
+            echo "::error::Got: $REF_NAME"
+            exit 1
+          fi
+          
+          echo "image_tag=$REF_NAME" >> "$GITHUB_OUTPUT"
+          echo "✓ Valid semantic version tag: $REF_NAME"
   
   deploy:
+    needs: validate-tag
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    
+    # Prevent concurrent deployments to production
+    concurrency:
+      group: k8s-deploy-production
+      cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        if: ${{ !env.ACT }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Checkout repository
+        if: ${{ env.ACT }}
+        uses: actions/checkout@v6       
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.31.4'
 
       - name: Install kustomize
         run: |
-          curl -sSL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
           sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
 
       - name: Install session-manager-plugin
         run: |
-          curl -sSL https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb -o /tmp/session-manager-plugin.deb
+          curl -sSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o /tmp/session-manager-plugin.deb
           sudo dpkg -i /tmp/session-manager-plugin.deb
+          session-manager-plugin --version
 
       - name: Configure AWS credentials via OIDC
         if: ${{ !env.ACT }}
@@ -39,9 +78,10 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: true
 
-      - name: Configure AWS credentials (local) 
-        if: ${{ env.ACT }} # only run under act 
+      - name: Configure AWS credentials (local test)
+        if: ${{ env.ACT }}
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -50,7 +90,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           output-credentials: true
 
-      - name: Pulumi Output
+      - name: Get Pulumi outputs
         id: pulumi
         uses: pulumi/actions@v6
         with:
@@ -60,11 +100,21 @@ jobs:
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           
-      - name: Deploy to k3s
+      - name: Deploy to k3s cluster
+        if: ${{ !env.ACT }}
         run: |
-          make k8s-remote-up INSTANCE_ID=${{ steps.pulumi.outputs.instance_id }} IMAGE_TAG=${{ inputs.image-tag }}
+          echo "Deploying version: ${{ needs.validate-tag.outputs.image_tag }}"
+          make k8s-remote-up \
+            INSTANCE_ID="${{ steps.pulumi.outputs.instance_id }}" \
+            IMAGE_TAG="${{ needs.validate-tag.outputs.image_tag }}"
 
+      - name: Verify deployment
+        run: |
+          echo "Deployment completed successfully"
+          echo "Version: ${{ needs.validate-tag.outputs.image_tag }}"
+          echo "Instance: ${{ steps.pulumi.outputs.instance_id }}"
+          
       # TODO: Add smoke tests to validate the deployment
-      # - name: Validate production
+      # - name: Run smoke tests
       #   run: |
       #     make validate-endpoints

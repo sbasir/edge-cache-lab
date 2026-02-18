@@ -4,10 +4,23 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'apps/web/**'
+      - 'openapi/**'
+      - '.github/workflows/web-ci.yaml'
   pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'openapi/**'
+      - '.github/workflows/web-ci.yaml'
 
 permissions:
   contents: read
+
+# Cancel in-progress runs for PRs, but not for main branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   web:

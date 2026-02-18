@@ -21,6 +21,9 @@ images:
   - name: edge-cache-lab-api
     newName: edge-cache-lab-api
     newTag: k8s
+  - name: edge-cache-lab-varnish
+    newName: edge-cache-lab-varnish
+    newTag: k8s
 
 # Optional: Uncomment and modify the varnish-ingress patch to configure hostname/TLS
 # patchesStrategicMerge:

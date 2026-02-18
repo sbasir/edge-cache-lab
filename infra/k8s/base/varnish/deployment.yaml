@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: varnish
+  annotations:
+    ignore-check.kube-linter.io/latest-tag: "Ignored here as Kustomize sets the image tag dynamically during deployment"
 spec:
   replicas: 1
   selector:
@@ -16,21 +18,8 @@ spec:
         runAsUser: 1000
       containers:
         - name: varnish
-          image: varnish:8-alpine
-          command: 
-            - varnishd
-            - -F
-            - -f
-            - /etc/varnish/default.vcl
-            - -a
-            - "http=:80,HTTP"
-            # NOTE: TTL is configured in two places by design:
-            # - The VCL sets beresp.ttl = 2m for 200 responses (takes precedence).
-            # - default_ttl=120 here provides a fallback TTL for responses where the VCL
-            #   does not explicitly set beresp.ttl. 120 seconds == 2 minutes, so both
-            #   settings are consistent; this flag is kept as the global default.
-            - -p
-            - "default_ttl=120"
+          image: edge-cache-lab-varnish:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           resources:
@@ -40,17 +29,16 @@ spec:
             requests:
               cpu: "200m"
               memory: "256Mi"
+          env:
+            - name: BACKEND_HOST
+              value: "api"
+            - name: PURGE_TOKEN
+              value: "test-purge-token"
           securityContext: 
             readOnlyRootFilesystem: true
           volumeMounts:
-            - name: varnish-config
-              mountPath: /etc/varnish/default.vcl
-              subPath: default.vcl
             - name: varnish-workspace
-              mountPath: /var/lib/varnish          
+              mountPath: /var/lib/varnish
       volumes:
-        - name: varnish-config
-          configMap:
-            name: varnish-config
         - name: varnish-workspace
           emptyDir: {}

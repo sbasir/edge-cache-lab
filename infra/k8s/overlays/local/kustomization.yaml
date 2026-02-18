@@ -6,5 +6,7 @@ resources:
 images:
   - name: edge-cache-lab-api
     newTag: k8s
+  - name: edge-cache-lab-varnish
+    newTag: k8s
   - name: edge-cache-lab-web
     newTag: k8s
