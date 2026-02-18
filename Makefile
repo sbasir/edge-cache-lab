@@ -62,6 +62,7 @@ help:
 	@echo "Web:"
 	@echo "  web-install            - Install web dependencies"
 	@echo "  web-generate-client    - Generate OpenAPI TypeScript client"
+	@echo "  web-openapi-diff       - Fail if generated TypeScript client differs"
 	@echo "  web-cf-typegen         - Generate Cloudflare types for Wrangler"
 	@echo "  web-run                - Run the web dev server"
 	@echo "  web-build              - Build web for production"
@@ -189,7 +190,7 @@ varnish-docker-build:
 
 app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build varnish-docker-build
 
-.PHONY: web-install web-generate-client web-run web-build web-preview web-lint web-docker-build web-cf-typegen web-ci
+.PHONY: web-install web-generate-client web-openapi-diff web-run web-build web-preview web-lint web-docker-build web-cf-typegen web-ci
 
 web-install:
 	@echo "Installing web dependencies..."
@@ -199,6 +200,11 @@ web-generate-client:
 	@echo "Generating OpenAPI TypeScript client..."
 	@cd apps/web && pnpm run generate-client
 	@echo "✓ Generated TypeScript client in apps/web/src/api"
+
+web-openapi-diff: web-generate-client
+	@echo "Checking for OpenAPI TypeScript client drift..."
+	@git diff --exit-code -- apps/web/src/api
+	@echo "✓ OpenAPI TypeScript client is in sync"
 
 web-cf-typegen:
 	@echo "Generating Cloudflare Types for Wrangler..."
@@ -223,7 +229,7 @@ web-lint:
 web-docker-build:
 	@docker build -t edge-cache-lab-web:$(IMAGE_TAG) apps/web
 
-web-ci: web-build web-lint web-docker-build
+web-ci: web-openapi-diff web-build web-lint web-docker-build
 
 .PHONY: docker-build docker-up docker-down docker-logs
 

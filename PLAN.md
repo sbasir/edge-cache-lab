@@ -35,15 +35,52 @@ Managed by:
 * Safe to break, easy to fix.
 * Learn by simulating real incidents.
 
-## Current Status (As Of 2026-02-14)
+## Current Status (As Of 2026-02-18)
 
-Phases 0-5 are implemented and validated locally and in Kubernetes:
+Phases 0-9 are implemented and validated across local workflows and CI/CD:
 
 * OpenAPI-driven handlers and tests are in place.
 * Cache headers, request id, and response meta are returned for cacheable endpoints.
 * Varnish is deployed in Compose and Kubernetes with HIT/MISS/PASS behavior.
 * Purge is supported via Varnish `PURGE` with `X-Purge-Token`.
 * Admin updates validate `X-Purge-Token` and return `X-Purge-Tags` for invalidation workflows.
+* CI validates OpenAPI, codegen drift, lint/test, and image builds.
+* Pulumi + GitHub Actions workflows provision/teardown infrastructure and support DNS updates.
+* Cloudflare Worker deployment and route wiring are in place for edge proxying.
+* Frontend SPA is implemented with generated OpenAPI models/client artifacts and cache observability UI.
+
+## Post-Phase-9 Reflection & Cleanup (2026-02-18)
+
+This is a stability and maintainability checkpoint before starting Phases 10-12.
+
+### What is working well
+
+* Contract-first flow is established across backend and frontend.
+* Cache behavior is inspectable end-to-end (headers + request id + response meta).
+* Local, k8s, and CI paths are all reproducible.
+* Purge flows are secured and testable.
+
+### Cleanup and refactor focus areas
+
+1. **Frontend contract guardrails**
+    * Keep generated TypeScript client in sync with OpenAPI via CI drift checks.
+    * Continue reducing endpoint-specific request duplication in page components while preserving header visibility required for cache diagnostics.
+
+2. **Documentation normalization**
+    * Keep status references consistent across `README.md`, `PLAN.md`, and `docs/*`.
+    * Clarify Cloudflare ownership boundaries and expected header behavior in one place.
+
+3. **Phase 10 readiness**
+    * Standardize the minimal observability queries now (hit ratio, bypass rate, backend latency, errors).
+    * Define retention/rotation expectations before adding more signal sources.
+
+### Next milestone
+
+Phases 10-12 now become the active implementation track:
+
+* Phase 10: observability expansion with concrete dashboard/log queries.
+* Phase 11: incident simulations with short runbooks and rollbacks.
+* Phase 12: production-grade operational documentation and API evolution policy.
 
 ## API First
 

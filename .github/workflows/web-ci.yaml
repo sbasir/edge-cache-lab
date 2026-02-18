@@ -48,6 +48,9 @@ jobs:
         working-directory: apps/web
         run: pnpm run generate-client
 
+      - name: Check OpenAPI client drift
+        run: git diff --exit-code -- apps/web/src/api
+
       - name: Lint
         working-directory: apps/web
         run: pnpm run lint
