@@ -7,7 +7,8 @@ ACT_FLAGS ?= --platform ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-24.04-2026
 	--container-architecture linux/amd64 \
 	--pull=false
 
-ACT_WEB_FLAGS = -s CF_API_TOKEN=$(CF_API_TOKEN)
+ACT_WEB_FLAGS = -s CF_API_TOKEN=$(CF_API_TOKEN) \
+	--var API_BASE_URL=$(API_BASE_URL)
 
 ACT_INFRA_FLAGS = -s PULUMI_ACCESS_TOKEN=$(PULUMI_ACCESS_TOKEN) \
 	-s CF_API_TOKEN=$(CF_API_TOKEN) \
@@ -60,6 +61,7 @@ help:
 	@echo "Web:"
 	@echo "  web-install         - Install web dependencies"
 	@echo "  web-generate-client - Generate OpenAPI TypeScript client"
+	@echo "  web-cf-typegen      - Generate Cloudflare types for Wrangler"
 	@echo "  web-run             - Run the web dev server"
 	@echo "  web-build           - Build web for production"
 	@echo "  web-preview         - Preview production build"
@@ -183,7 +185,7 @@ api-docker-build:
 
 app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build
 
-.PHONY: web-install web-generate-client web-run web-build web-preview web-lint web-docker-build
+.PHONY: web-install web-generate-client web-run web-build web-preview web-lint web-docker-build web-cf-typegen web-ci
 
 web-install:
 	@echo "Installing web dependencies..."
@@ -194,11 +196,16 @@ web-generate-client:
 	@cd apps/web && pnpm run generate-client
 	@echo "✓ Generated TypeScript client in apps/web/src/api"
 
-web-run: web-install web-generate-client
+web-cf-typegen:
+	@echo "Generating Cloudflare Types for Wrangler..."
+	@cd apps/web && pnpm run cf-typegen
+	@echo "✓ Generated Cloudflare types in apps/web/worker-configuration.d.ts"
+
+web-run: web-install web-generate-client web-cf-typegen
 	@echo "Starting web dev server on http://localhost:5173" && \
 	cd apps/web && pnpm run dev
 
-web-build: web-install web-generate-client
+web-build: web-install web-generate-client web-cf-typegen
 	@echo "Building web for production..." && \
 	cd apps/web && pnpm run build
 
@@ -471,6 +478,10 @@ gh-act-infra-destroy: gh-dependencies
 		--env FORCE=$(FORCE)
 
 gh-act-web-deploy: gh-dependencies
+	@if [ -z "$(API_BASE_URL)" ]; then \
+		echo "Error: API_BASE_URL environment variable is required for web deployment. Please set API_BASE_URL in your .env file or export it in your shell."; \
+		exit 1; \
+	fi;
 	@$(ACT) -W .github/workflows/web-deploy.yaml \
 		$(ACT_FLAGS) \
 		$(ACT_WEB_FLAGS)
