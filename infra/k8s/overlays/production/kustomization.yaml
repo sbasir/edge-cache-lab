@@ -1,8 +1,27 @@
+# Production k3s Setup for edge-cache-lab
+#
+# This overlay configures the production environment on k3s/EC2.
+#
+# Key characteristics:
+# - Varnish is exposed via Traefik Ingress (built into k3s)
+# - API remains ClusterIP (internal only)
+# - For hostnames/TLS, modify the varnish-ingress patch below
+#
+# To enable a specific hostname and HTTPS:
+# 1. Update the hostname in the varnish-ingress patch
+# 2. Install cert-manager: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+# 3. Create a ClusterIssuer or Issuer for Let's Encrypt
+# 4. Update varnish-ingress.yaml with annotations for cert-manager
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
 images:
-  - name: api
+  - name: edge-cache-lab-api
     newName: edge-cache-lab-api
     newTag: k8s
+
+# Optional: Uncomment and modify the varnish-ingress patch to configure hostname/TLS
+# patchesStrategicMerge:
+#   - varnish-ingress.yaml

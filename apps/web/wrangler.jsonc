@@ -9,15 +9,21 @@
     "enabled": true
   },
   "compatibility_flags": [
-    "nodejs_compat"
+    "nodejs_compat",
+    "global_fetch_strictly_public"
   ],
+  // global_fetch_strictly_public: This flag enforces that all fetch requests 
+  // made from the Worker must be to public URLs. Otherwise a fetch to the API_ORIGIN 
+  // would fail with a 522 error. By enabling this flag, you can ensure that your 
+  // Worker can only make fetch requests to public URLs, which is necessary when using a Custom Domain with Workers.
+  // https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-522/
   "vars": {
-    "API_ORIGIN": "https://api.edge.sofybasir.me"
+    "API_ORIGIN": "http://api.edge.sofybasir.me"
   },
   "routes": [
     {
-      "pattern": "edge.sofybasir.me",
-      "custom_domain": true
+      "pattern": "edge.sofybasir.me/*",
+      "zone_name": "sofybasir.me"
     }
   ]
 }
