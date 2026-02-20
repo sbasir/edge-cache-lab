@@ -1,5 +1,9 @@
 # Documentation
 
+## Developer Handbook
+
+For onboarding and day-to-day development, start with the [Developer Handbook](developer-handbook.md). It covers architecture, local workflows, production deployment, and production troubleshooting.
+
 ## API
 
 The API is generated from the OpenAPI contract (`openapi/api.yaml`). Handlers live in `apps/api/cmd/server` and implement the generated `ServerInterface`.
@@ -22,7 +26,7 @@ curl -i -X PURGE http://localhost:6081/product/prod-001 \
   -H 'X-Purge-Token: test-purge-token'
 ```
 
-See [docs/varnish.md](docs/varnish.md) for VCL details.
+See [varnish.md](varnish.md) for VCL details.
 
 ### Local verification
 
