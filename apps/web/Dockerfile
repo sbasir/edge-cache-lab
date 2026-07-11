@@ -28,7 +28,7 @@ RUN pnpm run build
 
 # ------------------------------
 # Runtime stage (nginx serving static files)
-FROM nginx:1.29-alpine-slim AS web
+FROM nginx:1.31-alpine-slim AS web
 
 # Copy built static assets
 COPY --from=build /usr/src/app/dist /usr/share/nginx/html
