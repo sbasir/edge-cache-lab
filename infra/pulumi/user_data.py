@@ -2,9 +2,8 @@
 
 from utils import load_template_source, render_template
 
-def build_user_data(
-    aws_region: str, scripts_bucket: str
-) -> str:
+
+def build_user_data(aws_region: str, scripts_bucket: str) -> str:
     """Return the cloud-init script used to bootstrap the instance.
 
     Parameters

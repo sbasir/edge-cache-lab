@@ -1,12 +1,12 @@
 #
-#    ___                   _   _      
-#   / _ \                 | | (_)     
-#  | |_| | __ _  ___ _ __ | |_ _  ___ 
+#    ___                   _   _
+#   / _ \                 | | (_)
+#  | |_| | __ _  ___ _ __ | |_ _  ___
 #  |  _  |/ _` |/ _ \ '_ \| __| |/ __|
-#  | | | | (_| |  __/ | | | |_| | (__ 
+#  | | | | (_| |  __/ | | | |_| | (__
 #  \_| |_/\__, |\___|_| |_|\__|_|\___|
 #          __/ |
-#  _    _ |___/ 
+#  _    _ |___/
 # | |  | |                / _| |
 # | |  | | ___ _ __ _  __| |_| | _____      ____
 # | |/\| |/ _ \ '__| |/ /|  _| |/ _ \ \ /\ / / ___|
@@ -23,10 +23,10 @@
 #
 # Alternative regeneration methods:
 # make recompile
-# 
+#
 # Or use the gh-aw CLI directly:
 # ./gh-aw compile --validate --verbose
-# 
+#
 # The workflow is generated when any workflow uses the 'expires' field
 # in create-discussions, create-issues, or create-pull-request safe-outputs configuration.
 # Schedule frequency is automatically determined by the shortest expiration time.
@@ -40,10 +40,16 @@ on:
 
 permissions: {}
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   close-expired-entities:
     if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-slim
+    timeout-minutes: 20
     permissions:
       discussions: write
       issues: write
@@ -55,7 +61,7 @@ jobs:
           destination: /opt/gh-aw/actions
 
       - name: Close expired discussions
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
             const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');
@@ -64,7 +70,7 @@ jobs:
             await main();
 
       - name: Close expired issues
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
             const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');
@@ -73,7 +79,7 @@ jobs:
             await main();
 
       - name: Close expired pull requests
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
             const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');

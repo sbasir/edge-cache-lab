@@ -9,21 +9,28 @@ on:
         default: 'dev'
         type: string
 
-permissions:
-  id-token: write  # Required for AWS OIDC
-  contents: read
+permissions: {}
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   destroy:
     name: Destroy Infrastructure
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 30
+    permissions:
+      id-token: write  # AWS OIDC
+      contents: read
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-      
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           working-directory: infra/pulumi
           github-token: ${{ github.token }}
@@ -31,41 +38,41 @@ jobs:
 
       - name: Configure AWS credentials via OIDC
         if: ${{ !env.ACT }} # skip when running under act
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      
-      - name: Configure AWS credentials (local) 
-        if: ${{ env.ACT }} # only run under act 
-        uses: aws-actions/configure-aws-credentials@v6
+
+      - name: Configure AWS credentials (local)
+        if: ${{ env.ACT }} # only run under act
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ vars.AWS_REGION }}
           output-credentials: true
-          
+
       - id: install-aws-cli
-        uses: unfor19/install-aws-cli-action@v1
+        uses: unfor19/install-aws-cli-action@f5b46b7f32cf5e7ebd652656c5036bf83dd1e60c # 1.0.8
         with:
           arch: amd64
-          
+
       - name: Verify AWS credentials
         if: ${{ env.ACT }}
         run: |
           aws sts get-caller-identity --no-cli-pager
 
       - name: Cache Pulumi venv
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
-          path: | 
+          path: |
             infra/pulumi/.venv
             infra/pulumi/venv
           key: pulumi-venv-${{ runner.os }}-${{ hashFiles('infra/pulumi/pyproject.toml') }}
-              
+
       - name: Cache Pulumi plugins
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/.pulumi/plugins
           key: pulumi-plugins-${{ runner.os }}
@@ -75,7 +82,7 @@ jobs:
           cd infra/pulumi
           uv sync
           cp -r .venv/ venv/
-      
+
       - name: Remove Cloudflare DNS Record
         if: ${{ !env.ACT || env.FORCE == 'true' }} # skip when running under act if FORCE is not true
         env:
@@ -85,11 +92,11 @@ jobs:
         working-directory: infra/pulumi
         run: |
           bash ../scripts/cloudflare-remove-dns.sh || echo "DNS record removal failed or record does not exist"
-      
+
       - name: Destroy with Pulumi
         if: ${{ !env.ACT || env.FORCE == 'true' }} # skip when running under act if FORCE is not true
         id: pulumi
-        uses: pulumi/actions@v6
+        uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6.6.1
         with:
           command: destroy
           stack-name: ${{ inputs.stack }}
@@ -98,12 +105,17 @@ jobs:
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           PULUMI_SKIP_CONFIRMATIONS: true
-      
+
       - name: Destruction Summary
+        env:
+          STACK: ${{ inputs.stack }}
+          CF_API_RECORD_NAME: ${{ vars.CF_API_RECORD_NAME }}
         run: |
-          echo "### Infrastructure Destroyed ✅" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Stack:** ${{ inputs.stack }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** All resources have been destroyed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **Note:** DNS record for \`${{ vars.CF_API_RECORD_NAME }}\` has been removed from Cloudflare" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Infrastructure Destroyed ✅"
+            echo ""
+            echo "**Stack:** ${STACK}"
+            echo "**Status:** All resources have been destroyed"
+            echo ""
+            echo "⚠️ **Note:** DNS record for \`${CF_API_RECORD_NAME}\` has been removed from Cloudflare"
+          } >> "$GITHUB_STEP_SUMMARY"

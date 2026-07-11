@@ -1,0 +1,71 @@
+# .github/workflows/lint-pin.yml
+# Universal supply-chain gate: lints workflows, enforces SHA pinning, lints YAML.
+# This is the workflow that keeps every OTHER workflow honest.
+name: Lint & Pin
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: lint-pin-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint-pin:
+    name: actionlint · pinact · yamllint · shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: actionlint
+        run: |
+          ACTIONLINT_VERSION=1.7.12
+          curl -sSfL \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar xz actionlint
+          ./actionlint -color
+
+      - name: pinact (verify every action is SHA-pinned)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PINACT_VERSION=4.0.0
+          curl -sSfL \
+            "https://github.com/suzuki-shunsuke/pinact/releases/download/v${PINACT_VERSION}/pinact_linux_amd64.tar.gz" \
+            | tar xz pinact
+          ./pinact run
+          git diff --exit-code || {
+            echo "::error::Some actions are not SHA-pinned. Run 'pinact run' locally and commit."
+            git diff
+            exit 1
+          }
+
+      - name: yamllint
+        run: |
+          pipx install yamllint || pip install --user yamllint
+          yamllint .
+
+      - name: shellcheck
+        run: |
+          git ls-files '*.sh' | xargs --no-run-if-empty shellcheck --external-sources
+
+      - name: hadolint (Dockerfile lint)
+        run: |
+          HADOLINT_VERSION=2.14.0
+          curl -sSfL \
+            "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64" \
+            -o /usr/local/bin/hadolint
+          chmod +x /usr/local/bin/hadolint
+          git ls-files '**/Dockerfile' 'Dockerfile' | xargs --no-run-if-empty hadolint

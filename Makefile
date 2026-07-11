@@ -1,4 +1,6 @@
 SHELL := /bin/bash
+.SHELLFLAGS := -eu -o pipefail -c
+.DEFAULT_GOAL := help
 # Use Make's shell() to evaluate `go env GOPATH` when the Makefile is read
 GOLANGCI := $(shell go env GOPATH)/bin/golangci-lint
 OAPI_CODEGEN := $(shell go env GOPATH)/bin/oapi-codegen
@@ -32,7 +34,7 @@ ifneq (,$(wildcard .env))
 ENV_PRE_VARS := $(.VARIABLES)
 include .env
 # Export only variables newly introduced by .env (avoid exporting all Make internals)
-ENV_NEW_VARS := $(filter-out $(ENV_PRE_VARS) MAKEFILE_LIST,$(.VARIABLES))
+ENV_NEW_VARS := $(filter-out $(ENV_PRE_VARS) MAKEFILE_LIST .VARIABLES,$(.VARIABLES))
 export $(ENV_NEW_VARS)
 endif
 
@@ -44,21 +46,24 @@ K8S_OVERLAY_PRODUCTION ?= infra/k8s/overlays/production
 
 PURGE_TOKEN ?= test-purge-token
 
-# Colors for output
-GREEN  := \033[0;32m
-YELLOW := \033[1;33m
-NC     := \033[0m
+# Colors for output. Use $(shell printf ...) so each var holds a REAL escape
+# byte (not the literal string "\033") — that way bash's builtin echo/printf
+# render them too, not just the awk help line.
+GREEN  := $(shell printf '\033[0;32m')
+YELLOW := $(shell printf '\033[1;33m')
+RED    := $(shell printf '\033[0;31m')
+NC     := $(shell printf '\033[0m')
 
 define print_help_section
 	@printf "$(YELLOW)%s$(NC)\n" "$(1)"
-	@grep -h -E '^[a-zA-Z0-9_.-]+:.*## $(2): .*$$' $(MAKEFILE_LIST) | \
-	awk -F '## ' \
+	@grep -h -E '^[a-zA-Z0-9_.-]+:.*##[!]? $(2): .*$$' $(MAKEFILE_LIST) | \
+	awk -F ':.*##' \
 	'{ \
 		cmd=$$1; \
-		gsub(/:.*/,"",cmd); \
 		desc=$$2; \
-		sub(/^$(2): /,"",desc); \
-		printf "  $(GREEN)%-30s$(NC)  %s\n", cmd, desc \
+		star=(desc ~ /^!/)?"⭐":"  "; \
+		sub(/^!?[ \t]*$(2):[ \t]*/,"",desc); \
+		printf "  $(GREEN)%-28s$(NC)  %s  %s\n", cmd, star, desc \
 	}'
 	@echo ""
 endef
@@ -67,6 +72,7 @@ endef
 help: ## Meta: Show this help message
 	@printf "$(GREEN)%s$(NC)\n" "Edge Cache Lab - Commands"
 	@echo ""
+	$(call print_help_section,Standard Commands,Standard)
 	$(call print_help_section,API Commands,API)
 	$(call print_help_section,Web Commands,Web)
 	$(call print_help_section,OpenAPI Commands,OpenAPI)
@@ -76,6 +82,48 @@ help: ## Meta: Show this help message
 	$(call print_help_section,Cloudflare DNS Commands,Cloudflare)
 	$(call print_help_section,CI Commands,CI)
 	$(call print_help_section,Testing Commands,Testing)
+	@printf "$(RED)⭐ = Frequently used$(NC)\n"
+
+.PHONY: install dev build test lint format clean ci hooks deploy deploy-dry-run
+
+##@ Standard
+
+install: web-install api-install hooks ##! Standard: Install all dependencies and git hooks
+
+hooks: ## Standard: Install/refresh git hooks (lefthook); migrates off husky/.githooks
+	@if git config --local --get core.hooksPath >/dev/null 2>&1; then \
+	  echo "$(YELLOW)Unsetting local core.hooksPath ($$(git config --local --get core.hooksPath)) so lefthook hooks run$(NC)"; \
+	  git config --local --unset core.hooksPath; \
+	fi
+	@if git config --global --get core.hooksPath >/dev/null 2>&1; then \
+	  echo "$(YELLOW)WARNING: global core.hooksPath is set — lefthook may not run. Clear with: git config --global --unset core.hooksPath$(NC)"; \
+	fi
+	@if command -v lefthook >/dev/null 2>&1; then lefthook install -f; \
+	elif command -v pnpm >/dev/null 2>&1 && pnpm exec lefthook --version >/dev/null 2>&1; then pnpm exec lefthook install -f; \
+	else echo "$(YELLOW)lefthook not found — install it: https://lefthook.dev$(NC)"; fi
+
+dev: docker-up ##! Standard: Start the full local stack (web/varnish/API)
+
+lint: api-lint web-lint k8s-lint ## Standard: Run all linters
+
+format: api-fmt ## Standard: Format all code
+	@cd apps/web && pnpm run format
+
+test: api-test ##! Standard: Run all tests
+
+build: web-build api-docker-build varnish-docker-build web-docker-build ## Standard: Build web + all container images
+
+clean: ## Standard: Remove build artifacts
+	@rm -rf apps/web/dist
+	@echo "✓ Cleaned build artifacts"
+
+ci: app-ci web-ci k8s-lint ##! Standard: Full local CI — mirrors app-ci, web-ci, k8s-ci
+
+deploy-dry-run: ## Standard: Validate the Cloudflare Worker deploy without shipping
+	@cd apps/web && pnpm exec wrangler deploy --dry-run
+
+deploy: ## Standard: Deploy the web Worker to Cloudflare (requires credentials)
+	@cd apps/web && pnpm run deploy
 
 .PHONY: api-init api-install api-update api-run api-test api-lint api-fmt openapi openapi-validate openapi-diff api-docker-build app-ci varnish-docker-build
 
@@ -95,7 +143,7 @@ api-install: ## API: Download and tidy API Go dependencies
 api-update: ## API: Update API Go dependencies
 	@cd apps/api && go get -u ./... && go mod tidy
 
-api-run: api-install ## API: Run the API server on localhost:3000
+api-run: api-install ##! API: Run the API server on localhost:3000
 	@echo "Starting API server on http://localhost:3000" && \
 	cd apps/api && go run ./...
 
@@ -145,7 +193,7 @@ app-ci: openapi-validate openapi-diff api-lint api-test api-docker-build varnish
 
 web-install: ## Web: Install web dependencies with pnpm
 	@echo "Installing web dependencies..."
-	@cd apps/web && corepack enable && corepack prepare pnpm@10.28.1 --activate && pnpm install
+	@cd apps/web && corepack enable && corepack prepare pnpm@10.30.3 --activate && pnpm install
 
 web-generate-client: ## Web: Generate OpenAPI TypeScript client
 	@echo "Generating OpenAPI TypeScript client..."
@@ -162,7 +210,7 @@ web-cf-typegen: ## Web: Generate Cloudflare Wrangler type definitions
 	@cd apps/web && pnpm run cf-typegen
 	@echo "✓ Generated Cloudflare types in apps/web/worker-configuration.d.ts"
 
-web-run: web-install web-generate-client web-cf-typegen ## Web: Run web development server
+web-run: web-install web-generate-client web-cf-typegen ##! Web: Run web development server
 	@echo "Starting web dev server on http://localhost:5173" && \
 	cd apps/web && pnpm run dev
 
@@ -189,7 +237,7 @@ web-ci: web-openapi-diff web-build web-lint web-docker-build ## CI: Run web-side
 docker-build: ## Docker: Build all Docker Compose services
 	@docker compose build
 
-docker-up: ## Docker: Start local stack with Docker Compose
+docker-up: ##! Docker: Start local stack with Docker Compose
 	@docker compose up -d --build
 
 docker-down: ## Docker: Stop local stack and remove orphan containers

@@ -6,71 +6,69 @@ import { fetchNoStore } from '../utils/fetchNoStore';
 import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function CategoryPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [headers, setHeaders] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [headers, setHeaders] = useState<Record<string, string>>({});
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetchNoStore(`${OpenAPI.BASE}/category`);
-        setHeaders(headersFromResponse(response));
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
-        }
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				setLoading(true);
+				setError(null);
 
-        const result = await response.json();
-        setCategories(result.categories || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch');
-      } finally {
-        setLoading(false);
-      }
-    };
+				const response = await fetchNoStore(`${OpenAPI.BASE}/category`);
+				setHeaders(headersFromResponse(response));
 
-    fetchData();
-  }, []);
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+				}
 
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
+				const result = await response.json();
+				setCategories(result.categories || []);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : 'Failed to fetch');
+			} finally {
+				setLoading(false);
+			}
+		};
 
-  return (
-    <div className="page">
-      <div className="container">
-        <h2>📂 Categories</h2>
+		fetchData();
+	}, []);
 
-        <div className="page-layout">
-          <div className="page-main">
-            <div className="content-section">
-              <div className="categories-grid">
-                {categories.map((category) => (
-                  <div key={category.slug} className="category-card">
-                    <h3>{category.name}</h3>
-                    <p>{category.description}</p>
-                    {category.productCount && category.productCount > 0 && (
-                      <p className="category-count">
-                        {category.productCount} product{category.productCount !== 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+	if (loading) return <div className="loading">Loading...</div>;
+	if (error) return <div className="error">Error: {error}</div>;
 
-              {categories.length === 0 && (
-                <div className="empty-state">No categories found</div>
-              )}
-            </div>
-          </div>
-          <aside className="page-aside">
-            <CacheInfo headers={headers} />
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
+	return (
+		<div className="page">
+			<div className="container">
+				<h2>📂 Categories</h2>
+
+				<div className="page-layout">
+					<div className="page-main">
+						<div className="content-section">
+							<div className="categories-grid">
+								{categories.map((category) => (
+									<div key={category.slug} className="category-card">
+										<h3>{category.name}</h3>
+										<p>{category.description}</p>
+										{category.productCount && category.productCount > 0 && (
+											<p className="category-count">
+												{category.productCount} product{category.productCount !== 1 ? 's' : ''}
+											</p>
+										)}
+									</div>
+								))}
+							</div>
+
+							{categories.length === 0 && <div className="empty-state">No categories found</div>}
+						</div>
+					</div>
+					<aside className="page-aside">
+						<CacheInfo headers={headers} />
+					</aside>
+				</div>
+			</div>
+		</div>
+	);
 }

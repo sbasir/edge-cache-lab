@@ -11,7 +11,7 @@ servers:
   - url: https://edge.sofybasir.me/api
     description: Production API endpoint (via Varnish CDN)
   - url: http://localhost:6081
-    description: Varnish CDN cache endpoint 
+    description: Varnish CDN cache endpoint
   - url: http://localhost:3000
     description: Direct origin API server
 

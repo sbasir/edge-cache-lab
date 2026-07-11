@@ -1,0 +1,24 @@
+# ruff.toml — Python linter + formatter (replaces flake8/isort/black).
+# Run: uvx ruff check . && uvx ruff format --check .
+target-version = "py314"
+line-length = 100
+extend-exclude = ["**/.venv", "**/venv"]
+# First-party source roots so isort classifies the Pulumi modules correctly.
+src = ["infra/pulumi"]
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions
+    "RUF",  # ruff-specific
+]
+ignore = []
+
+[format]
+quote-style = "double"
+indent-style = "space"

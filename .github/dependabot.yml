@@ -1,0 +1,43 @@
+# .github/dependabot.yml — weekly automated dependency PRs.
+# Keep github-actions (so SHA pins stay current) + the repo's package ecosystems.
+version: 2
+updates:
+  # Always present: keeps SHA-pinned action versions fresh.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+    versioning-strategy: lockfile-only
+    commit-message:
+      prefix: "chore"
+
+  - package-ecosystem: gomod
+    directory: /apps/api
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+
+  - package-ecosystem: pip
+    directory: /infra/pulumi
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"
+
+  - package-ecosystem: docker
+    directories:
+      - /apps/api
+      - /apps/varnish
+      - /apps/web
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore"

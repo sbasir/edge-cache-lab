@@ -1,0 +1,16 @@
+# .github/CODEOWNERS — require review on sensitive paths.
+# Syntax: <path-glob>  <@owner ...>   (last matching rule wins)
+
+# Default owner for everything.
+*                               @sbasir
+
+# Lock down the supply-chain surface so changes get a second look.
+/.github/workflows/             @sbasir
+/.github/dependabot.yml         @sbasir
+/.gitleaks.toml                 @sbasir
+/Makefile                       @sbasir
+/.mise.toml                     @sbasir
+
+# Infra / deploy config.
+/apps/web/wrangler.jsonc        @sbasir
+/infra/pulumi/                  @sbasir

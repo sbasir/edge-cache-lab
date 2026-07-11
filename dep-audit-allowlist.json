@@ -1,0 +1,94 @@
+{
+	"allowlist": [
+		{
+			"id": "GHSA-2w6w-674q-4c4q",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-3mfm-83xf-c92r",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-49rj-9fvp-4h2h",
+			"reason": "react-router advisory captured at realign — evaluate react-router-dom upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-8646-j5j9-6r62",
+			"reason": "react-router advisory captured at realign — evaluate react-router-dom upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-8x6r-g9mw-2r78",
+			"reason": "react-router advisory captured at realign — evaluate react-router-dom upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-96hv-2xvq-fx4p",
+			"reason": "ws advisory (transitive via wrangler/miniflare, dev-only) captured at realign — triage before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-9cx6-37pm-9jff",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-c2c7-rcm5-vvqj",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-f269-vfmq-vjvj",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-fx2h-pf6j-xcff",
+			"reason": "vite advisory (dev-only build tool) captured at realign — evaluate vite upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-p9ff-h696-f583",
+			"reason": "vite advisory (dev-only build tool) captured at realign — evaluate vite upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-rxv8-25v2-qmq8",
+			"reason": "react-router advisory captured at realign — evaluate react-router-dom upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-v2wj-q39q-566r",
+			"reason": "vite advisory (dev-only build tool) captured at realign — evaluate vite upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-v9p9-hfj2-hcw8",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-vrm6-8vpv-qv8q",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-vxpw-j846-p89q",
+			"reason": "undici advisory (transitive via wrangler, dev-only) captured at realign — triage before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-xhpv-hc6g-r9c6",
+			"reason": "Pre-existing transitive advisory captured at realign — triage/upgrade before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		},
+		{
+			"id": "GHSA-xjpj-3mr7-gcpf",
+			"reason": "handlebars advisory (transitive via openapi-typescript-codegen, dev-only) captured at realign — triage before expiry.",
+			"until": "2026-10-11T00:00:00Z"
+		}
+	]
+}
