@@ -15,12 +15,12 @@
 	// Worker can only make fetch requests to public URLs, which is necessary when using a Custom Domain with Workers.
 	// https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-522/
 	"vars": {
-		"API_ORIGIN": "http://api.edge.sofybasir.me"
+		"API_ORIGIN": "http://api.edge.sbas.dev"
 	},
 	"routes": [
 		{
-			"pattern": "edge.sofybasir.me/*",
-			"zone_name": "sofybasir.me"
+			"pattern": "edge.sbas.dev/*",
+			"zone_name": "sbas.dev"
 		}
 	],
 	"env": {
@@ -30,7 +30,7 @@
 			"name": "edge-cache-lab-preview",
 			"workers_dev": true,
 			"vars": {
-				"API_ORIGIN": "http://api.edge.sofybasir.me"
+				"API_ORIGIN": "http://api.edge.sbas.dev"
 			}
 		}
 	}
