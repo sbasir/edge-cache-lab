@@ -59,7 +59,10 @@ jobs:
 
       - name: shellcheck
         run: |
-          git ls-files '*.sh' | xargs --no-run-if-empty shellcheck --external-sources
+          # --severity=warning: gate on real bugs (warning+), not style nits that
+          # vary between shellcheck versions (e.g. SC2002 "useless cat").
+          git ls-files '*.sh' | xargs --no-run-if-empty \
+            shellcheck --external-sources --severity=warning
 
       - name: hadolint (Dockerfile lint)
         run: |
