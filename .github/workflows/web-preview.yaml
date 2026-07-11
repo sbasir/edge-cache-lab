@@ -1,8 +1,10 @@
 # .github/workflows/web-preview.yaml — deploy a per-PR preview Worker, comment the URL.
 #
-# Secrets/vars required (Settings → Secrets and variables → Actions):
-#   CF_API_TOKEN  (secret) — "Edit Cloudflare Workers" token
-# Environment "preview" must exist (Settings → Environments).
+# Requires:
+#   - CF_API_TOKEN (secret) — "Edit Cloudflare Workers" token.
+#   - A "preview" GitHub Environment (Settings → Environments).
+# Setup instructions (token creation + Environment): see README.md →
+#   "Web (Cloudflare Workers) deployment".
 name: Web Preview
 
 on:

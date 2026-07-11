@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+# Sourced helper library (no shebang — intended to be `.`-sourced by other scripts).
+
 command_exists() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ $1 not found"

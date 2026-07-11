@@ -1,4 +1,6 @@
 name: Deploy Web to Cloudflare
+# Requires the CF_API_TOKEN secret. Token creation steps: see README.md →
+# "Web (Cloudflare Workers) deployment".
 
 on:
   push:

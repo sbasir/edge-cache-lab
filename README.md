@@ -152,6 +152,36 @@ make gh-act-all-ci
    - Click "Run workflow"
    - Confirm deployment
 
+### Web (Cloudflare Workers) deployment
+
+The `web-deploy` (production, on push to `main`) and `web-preview` (per-PR) workflows
+publish the SPA Worker in `apps/web`. Both reuse the **`CF_API_TOKEN`** secret above —
+its `Account:Workers Scripts:Edit` (deploy) and `Zone:Workers Routes:Edit` (custom
+route on `edge.sofybasir.me`) permissions already cover Workers deploys.
+
+**Creating the `CF_API_TOKEN` for Workers deploys** (if you don't already have one):
+
+1. Cloudflare dashboard → **My Profile → API Tokens → Create Token**.
+2. Use the **"Edit Cloudflare Workers"** template (or **Create Custom Token** and add
+   the six permissions listed under `CF_API_TOKEN` above).
+3. Scope **Account Resources** to your account and **Zone Resources** to `sofybasir.me`.
+4. Create the token, copy it, then store it as a repo secret:
+
+   ```sh
+   gh secret set CF_API_TOKEN -r sbasir/edge-cache-lab --body "<your-cloudflare-api-token>"
+   ```
+
+   Verify the token before saving it:
+
+   ```sh
+   curl -s -H "Authorization: Bearer <token>" \
+     https://api.cloudflare.com/client/v4/user/tokens/verify | jq .success
+   ```
+
+**Create the `preview` Environment** (required by `web-preview`): repo **Settings →
+Environments → New environment → `preview`**. Per-PR builds deploy the isolated
+`edge-cache-lab-preview` Worker on `*.workers.dev` and comment the URL on the PR.
+
 ## Varnish Cache
 
 Implementation with reverse proxy caching. See [docs/varnish.md](docs/varnish.md) for details.
