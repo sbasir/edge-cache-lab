@@ -1,0 +1,56 @@
+# .github/workflows/infra-ci.yaml — Pulumi (Python) quality: ruff · mypy · pip-audit.
+name: Infra CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/pulumi/**'
+      - '.github/workflows/infra-ci.yaml'
+  pull_request:
+    paths:
+      - 'infra/pulumi/**'
+      - '.github/workflows/infra-ci.yaml'
+
+permissions: {}
+
+concurrency:
+  group: infra-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  infra:
+    name: Lint · Type-check · Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: infra/pulumi
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Ruff lint
+        run: uvx ruff check .
+
+      - name: Ruff format check
+        run: uvx ruff format --check .
+
+      - name: Type-check (mypy)
+        run: uv run mypy .
+
+      - name: Dependency audit (pip-audit)
+        run: uvx pip-audit

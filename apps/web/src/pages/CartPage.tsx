@@ -6,85 +6,85 @@ import { fetchNoStore } from '../utils/fetchNoStore';
 import { headersFromResponse } from '../utils/headersFromResponse';
 
 export default function CartPage() {
-  const [cart, setCart] = useState<Cart | null>(null);
-  const [headers, setHeaders] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+	const [cart, setCart] = useState<Cart | null>(null);
+	const [headers, setHeaders] = useState<Record<string, string>>({});
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetchNoStore(`${OpenAPI.BASE}/cart`);
-        setHeaders(headersFromResponse(response));
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
-        }
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				setLoading(true);
+				setError(null);
 
-        const result = await response.json();
-        setCart(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch');
-      } finally {
-        setLoading(false);
-      }
-    };
+				const response = await fetchNoStore(`${OpenAPI.BASE}/cart`);
+				setHeaders(headersFromResponse(response));
 
-    fetchData();
-  }, []);
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+				}
 
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
-  if (!cart) return <div className="error">No cart data</div>;
+				const result = await response.json();
+				setCart(result);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : 'Failed to fetch');
+			} finally {
+				setLoading(false);
+			}
+		};
 
-  const total = cart.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+		fetchData();
+	}, []);
 
-  return (
-    <div className="page">
-      <div className="container">
-        <h2>🛒 Shopping Cart</h2>
-        
-        <div className="page-layout">
-          <div className="page-main">
-            <div className="info-banner">
-              <strong>⚠️ Non-Cacheable Page:</strong> This page should always show X-Cache: PASS
-            </div>
+	if (loading) return <div className="loading">Loading...</div>;
+	if (error) return <div className="error">Error: {error}</div>;
+	if (!cart) return <div className="error">No cart data</div>;
 
-            <div className="content-section">
-              {cart.items && cart.items.length > 0 ? (
-                <>
-                  <div className="cart-items">
-                    {cart.items.map((item) => (
-                      <div key={item.productId} className="cart-item">
-                        <div className="cart-item-info">
-                          <h4>{item.productId}</h4>
-                          <p className="cart-item-quantity">Quantity: {item.quantity}</p>
-                        </div>
-                        <div className="cart-item-price">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="cart-summary">
-                    <h3>Total: ${total.toFixed(2)}</h3>
-                    <button className="btn-primary">Proceed to Checkout</button>
-                  </div>
-                </>
-              ) : (
-                <div className="empty-state">Your cart is empty</div>
-              )}
-            </div>
-          </div>
-          <aside className="page-aside">
-            <CacheInfo meta={cart.meta} headers={headers} />
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
+	const total = cart.items?.reduce((sum, item) => sum + item.price * item.quantity, 0) || 0;
+
+	return (
+		<div className="page">
+			<div className="container">
+				<h2>🛒 Shopping Cart</h2>
+
+				<div className="page-layout">
+					<div className="page-main">
+						<div className="info-banner">
+							<strong>⚠️ Non-Cacheable Page:</strong> This page should always show X-Cache: PASS
+						</div>
+
+						<div className="content-section">
+							{cart.items && cart.items.length > 0 ? (
+								<>
+									<div className="cart-items">
+										{cart.items.map((item) => (
+											<div key={item.productId} className="cart-item">
+												<div className="cart-item-info">
+													<h4>{item.productId}</h4>
+													<p className="cart-item-quantity">Quantity: {item.quantity}</p>
+												</div>
+												<div className="cart-item-price">
+													${(item.price * item.quantity).toFixed(2)}
+												</div>
+											</div>
+										))}
+									</div>
+
+									<div className="cart-summary">
+										<h3>Total: ${total.toFixed(2)}</h3>
+										<button className="btn-primary">Proceed to Checkout</button>
+									</div>
+								</>
+							) : (
+								<div className="empty-state">Your cart is empty</div>
+							)}
+						</div>
+					</div>
+					<aside className="page-aside">
+						<CacheInfo meta={cart.meta} headers={headers} />
+					</aside>
+				</div>
+			</div>
+		</div>
+	);
 }

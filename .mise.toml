@@ -1,0 +1,8 @@
+# .mise.toml — single source of truth for runtime versions.
+# Replaces .nvmrc / .python-version / .tool-versions. Run `mise install`.
+
+[tools]
+node = "24"
+pnpm = "10.30.3"
+go = "1.26"
+python = "3.14"

@@ -1,7 +1,7 @@
 """A Python Pulumi program"""
 
 import json
-from typing import cast, Dict, List
+from typing import cast
 
 import pulumi
 import pulumi_aws as aws
@@ -19,10 +19,11 @@ aws_region = aws.config.region or "false"
 if not aws_region or aws_region == "false":
     raise ValueError("AWS region must be configured (e.g. 'me-central-1').")
 
+
 # Build the IAM trust policy that allows EC2 to assume the role.
 def build_assume_role_policy() -> str:
     """Return the assume-role policy JSON for EC2."""
-    policy: Dict[str, object] = {
+    policy: dict[str, object] = {
         "Version": "2012-10-17",
         "Statement": [
             {
@@ -34,16 +35,17 @@ def build_assume_role_policy() -> str:
     }
     return json.dumps(policy)
 
+
 # Build the Parameter Store policy that allows access.
 def build_parameter_store_policy() -> str:
     """Return the Parameter Store policy JSON."""
-    actions: List[str] = [
+    actions: list[str] = [
         "ssm:GetParameter",
         "ssm:GetParameters",
         "ssm:GetParametersByPath",
         "ssm:PutParameter",
     ]
-    policy: Dict[str, object] = {
+    policy: dict[str, object] = {
         "Version": "2012-10-17",
         "Statement": [
             {
@@ -55,6 +57,7 @@ def build_parameter_store_policy() -> str:
     }
     return json.dumps(policy)
 
+
 # -----------------------------------------------------------------------------
 # IAM Role and Instance Profile for SSM and Parameter Store access
 # -----------------------------------------------------------------------------
@@ -64,9 +67,7 @@ ec2_role = iam.Role(
     f"{prefix}-role",
     name=f"{prefix}-role",
     assume_role_policy=build_assume_role_policy(),
-    description=(
-        "IAM role for EC2 instance with SSM access"
-    ),
+    description=("IAM role for EC2 instance with SSM access"),
     tags={"Name": f"{prefix}-role"},
 )
 
@@ -203,9 +204,12 @@ public_subnet_1 = ec2.Subnet(
     f"{prefix}-public-subnet-{az_1}",
     vpc_id=vpc.id,
     cidr_block="10.11.1.0/24",
-    ipv6_cidr_block=cast(pulumi.Input[str], vpc.ipv6_cidr_block.apply(
-        lambda cidr: cidr.replace("00::/56", "01::/64") if cidr else None
-    )),
+    ipv6_cidr_block=cast(
+        pulumi.Input[str],
+        vpc.ipv6_cidr_block.apply(
+            lambda cidr: cidr.replace("00::/56", "01::/64") if cidr else None
+        ),
+    ),
     assign_ipv6_address_on_creation=True,
     availability_zone=az_1,
     tags={"Name": f"{prefix}-public-subnet-{az_1}"},
@@ -214,9 +218,12 @@ public_subnet_2 = ec2.Subnet(
     f"{prefix}-public-subnet-{az_2}",
     vpc_id=vpc.id,
     cidr_block="10.11.2.0/24",
-    ipv6_cidr_block=cast(pulumi.Input[str], vpc.ipv6_cidr_block.apply(
-        lambda cidr: cidr.replace("00::/56", "02::/64") if cidr else None
-    )),
+    ipv6_cidr_block=cast(
+        pulumi.Input[str],
+        vpc.ipv6_cidr_block.apply(
+            lambda cidr: cidr.replace("00::/56", "02::/64") if cidr else None
+        ),
+    ),
     assign_ipv6_address_on_creation=True,
     availability_zone=az_2,
     tags={"Name": f"{prefix}-public-subnet-{az_2}"},
@@ -225,9 +232,12 @@ public_subnet_3 = ec2.Subnet(
     f"{prefix}-public-subnet-{az_3}",
     vpc_id=vpc.id,
     cidr_block="10.11.3.0/24",
-    ipv6_cidr_block=cast(pulumi.Input[str], vpc.ipv6_cidr_block.apply(
-        lambda cidr: cidr.replace("00::/56", "03::/64") if cidr else None
-    )),
+    ipv6_cidr_block=cast(
+        pulumi.Input[str],
+        vpc.ipv6_cidr_block.apply(
+            lambda cidr: cidr.replace("00::/56", "03::/64") if cidr else None
+        ),
+    ),
     assign_ipv6_address_on_creation=True,
     availability_zone=az_3,
     tags={"Name": f"{prefix}-public-subnet-{az_3}"},
@@ -335,9 +345,7 @@ spot = ec2.SpotInstanceRequest(
     associate_public_ip_address=True,
     ipv6_address_count=1,
     user_data=scripts_bucket.bucket.apply(
-        lambda bucket_name: build_user_data(
-            aws_region=aws_region, scripts_bucket=bucket_name
-        )
+        lambda bucket_name: build_user_data(aws_region=aws_region, scripts_bucket=bucket_name)
     ),
     # Spot instance configuration
     spot_type="persistent",  # Keeps requesting if interrupted

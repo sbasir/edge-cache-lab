@@ -17,8 +17,7 @@ on:
         default: true
         type: boolean
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency:
   group: create-release-tag
@@ -28,11 +27,14 @@ jobs:
   tag:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
     outputs:
       new_tag: ${{ steps.compute.outputs.new_tag }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-tags: true
           ref: ${{ github.ref }}

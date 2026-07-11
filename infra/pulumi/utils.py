@@ -1,5 +1,5 @@
 import os
-from typing import Mapping
+from collections.abc import Mapping
 
 import jinja2
 
@@ -23,5 +23,5 @@ def load_template_source(template_name: str) -> str:
     # Use raw file contents for templates that should not be Jinja-rendered.
     template_dir = os.path.join(os.path.dirname(__file__), "templates")
     template_path = os.path.join(template_dir, template_name)
-    with open(template_path, "r", encoding="utf-8") as handle:
+    with open(template_path, encoding="utf-8") as handle:
         return handle.read()

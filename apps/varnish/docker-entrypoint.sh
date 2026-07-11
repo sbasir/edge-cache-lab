@@ -14,4 +14,4 @@ mkdir -p "$OUTPUT_DIR"
 sed "s/BACKEND_HOST/$BACKEND_HOST/g; s/PURGE_TOKEN/$PURGE_TOKEN/g" "$SOURCE_TEMPLATE" > "$OUTPUT_FILE"
 
 echo "Starting Varnish..."
-exec varnishd -F -f "$OUTPUT_FILE" -a http=0.0.0.0:80,HTTP -a http=[::]:80,HTTP -p default_ttl=120
+exec varnishd -F -f "$OUTPUT_FILE" -a "http=0.0.0.0:80,HTTP" -a "http=[::]:80,HTTP" -p default_ttl=120

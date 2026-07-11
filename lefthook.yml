@@ -1,0 +1,46 @@
+# lefthook.yml — git hooks. Install with `lefthook install -f` (or `make hooks`).
+# Node hooks auto-wire via the web app's "postinstall": "lefthook install -f".
+#
+# Migrating off husky / a custom .githooks dir: git uses core.hooksPath if set,
+# which makes it ignore .git/hooks where lefthook installs. `make hooks` unsets
+# the local core.hooksPath first; if it's set globally, clear it manually:
+#   git config --global --unset core.hooksPath
+
+pre-commit:
+  parallel: true
+  commands:
+    # Block direct commits to main — always force someone onto a branch.
+    no-commit-to-main:
+      run_on_empty: true
+      run: |
+        branch=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+        if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+          echo "ERROR: direct commits to $branch are not allowed. Use a feature branch."
+          exit 1
+        fi
+
+    # JS/TS (biome) — runs from the web app where biome is installed.
+    biome:
+      root: apps/web/
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+    # Go
+    gofmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+
+    # Python (ruff) — Pulumi infra.
+    ruff:
+      glob: "*.py"
+      run: uvx ruff check --fix {staged_files} && uvx ruff format {staged_files}
+      stage_fixed: true
+
+    # Secrets — fast staged-only gitleaks pass (CI runs the full scan)
+    gitleaks:
+      run: |
+        command -v gitleaks >/dev/null 2>&1 \
+          && gitleaks protect --staged --redact --config .gitleaks.toml \
+          || echo "gitleaks not installed — skipping local scan (CI still enforces)"

@@ -1,38 +1,38 @@
 {
-  "name": "web",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "pnpm run build && vite preview",
-    "deploy": "pnpm run build && wrangler deploy",
-    "cf-typegen": "wrangler types",
-    "generate-client": "openapi --input ../../openapi/api.yaml --output ./src/api --client fetch"
-  },
-  "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1"
-  },
-  "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.25.6",
-    "@eslint/js": "^9.39.3",
-    "@types/node": "^24.11.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
-    "eslint": "^9.39.3",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.26",
-    "globals": "^16.5.0",
-    "openapi-typescript-codegen": "^0.30.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1",
-    "wrangler": "^4.69.0"
-  },
-  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
+	"name": "web",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc -b && vite build",
+		"check": "tsc -b --noEmit",
+		"lint": "biome ci .",
+		"format": "biome format --write .",
+		"dep-audit": "python3 ../../scripts/dep-audit.py",
+		"preview": "pnpm run build && vite preview",
+		"deploy": "pnpm run build && wrangler deploy",
+		"cf-typegen": "wrangler types",
+		"generate-client": "openapi --input ../../openapi/api.yaml --output ./src/api --client fetch",
+		"preinstall": "npx only-allow pnpm",
+		"postinstall": "cd ../.. && lefthook install -f || true"
+	},
+	"dependencies": {
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4",
+		"react-router-dom": "^7.13.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.13",
+		"@cloudflare/vite-plugin": "^1.25.6",
+		"@types/node": "^24.11.0",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.1.4",
+		"openapi-typescript-codegen": "^0.30.0",
+		"typescript": "~5.9.3",
+		"vite": "^7.3.1",
+		"wrangler": "^4.69.0"
+	},
+	"packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
 }

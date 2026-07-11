@@ -1,0 +1,3 @@
+# .github/actionlint.yaml — config for actionlint (GitHub Actions linter).
+# Most repos need no config; add self-hosted runner labels or known-false-positive
+# path filters here. Run: actionlint -color

@@ -1,0 +1,13 @@
+# .gitleaks.toml — extends the default gitleaks ruleset.
+# Add allowlist entries only for verified false positives (public tokens, test
+# fixtures). Each entry should explain WHY it is not a secret.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Local-only purge token used in docs/compose for the demo stack — not a real secret"
+regexes = ['''test-purge-token''']
+
+[[allowlists]]
+description = "Example/fixture env files"
+paths = ['''\.env\.example''']

@@ -1,0 +1,29 @@
+# .yamllint — lint YAML (workflows, configs). Run: yamllint .
+# Relaxed on line length and brace spacing because GitHub Actions YAML is wide
+# and frequently uses ${{ ... }} inline expressions.
+extends: default
+
+rules:
+  line-length:
+    max: 140
+    level: warning
+  document-start: disable
+  truthy:
+    # GitHub Actions uses `on:` as a key — don't flag it as a truthy value.
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  braces:
+    max-spaces-inside: 1
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+
+ignore: |
+  node_modules/
+  dist/
+  build/
+  .venv/
+  venv/
+  infra/k8s/
+  '**/pnpm-lock.yaml'

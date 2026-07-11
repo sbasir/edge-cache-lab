@@ -42,10 +42,10 @@ fi
 # 4. Ports
 echo "4. ✓ Listening ports:"
 echo "   Port 3000 (API):"
-ss -tlnp | grep ":3000 " | echo "   ✅ Listening" || echo "   ⚠️  Not listening"
+ss -tlnp | grep -q ":3000 " && echo "   ✅ Listening" || echo "   ⚠️  Not listening"
 
 echo "   Port 6443 (k3s API):"
-ss -tlnp | grep ":6443 " | echo "   ✅ Listening" || echo "   ⚠️  Not listening"
+ss -tlnp | grep -q ":6443 " && echo "   ✅ Listening" || echo "   ⚠️  Not listening"
 
 # 5. SSM parameters
 echo "5. ✓ SSM Parameter Store:"

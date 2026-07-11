@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=infra/scripts/utils.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh"
 
 INSTANCE_ID=${INSTANCE_ID:-}
@@ -53,7 +54,7 @@ if nc_check "localhost" "6443"; then
 else
     echo "   ⏳ Starting SSM port forwarding session to localhost:6443..."
     aws ssm start-session \
-    --target $INSTANCE_ID \
+    --target "$INSTANCE_ID" \
     --document-name AWS-StartPortForwardingSession \
     --parameters 'localPortNumber=6443,portNumber=6443' &
     SSM_PID=$!

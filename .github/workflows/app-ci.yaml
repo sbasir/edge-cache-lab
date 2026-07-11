@@ -16,8 +16,7 @@ on:
       - 'openapi/**'
       - '.github/workflows/app-ci.yaml'
 
-permissions:
-  contents: read
+permissions: {}
 
 # Cancel in-progress runs for PRs, but not for main branch
 concurrency:
@@ -27,12 +26,15 @@ concurrency:
 jobs:
   api:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: '1.26.0'
           cache: true
@@ -52,7 +54,7 @@ jobs:
         run: make openapi
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.9
           working-directory: apps/api
