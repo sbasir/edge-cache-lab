@@ -353,13 +353,13 @@ infra-replace-instance: ## Infra: Replace Spot instance resources while preservi
 
 ##@ Cloudflare
 
-infra-set-dns: ## Cloudflare: Upsert API DNS A record to current stack public IP
+infra-set-dns: ## Cloudflare: Upsert API (A) + Worker-route (proxied AAAA) DNS records
 	@cd infra/pulumi && DRY_RUN=0 ../scripts/cloudflare-set-dns.sh
 
 infra-set-dns-dry: ## Cloudflare: Preview DNS changes without applying
 	@cd infra/pulumi && DRY_RUN=1 ../scripts/cloudflare-set-dns.sh
 
-infra-remove-dns: ## Cloudflare: Remove API DNS A record
+infra-remove-dns: ## Cloudflare: Remove API + Worker-route DNS records
 	@cd infra/pulumi && ../scripts/cloudflare-remove-dns.sh
 
 infra-up-set-dns: ## Infra: Apply infra changes and then update DNS

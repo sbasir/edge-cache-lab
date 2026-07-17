@@ -157,14 +157,14 @@ make gh-act-all-ci
 The `web-deploy` (production, on push to `main`) and `web-preview` (per-PR) workflows
 publish the SPA Worker in `apps/web`. Both reuse the **`CF_API_TOKEN`** secret above —
 its `Account:Workers Scripts:Edit` (deploy) and `Zone:Workers Routes:Edit` (custom
-route on `edge.sofybasir.me`) permissions already cover Workers deploys.
+route on `edge.sbas.dev`) permissions already cover Workers deploys.
 
 **Creating the `CF_API_TOKEN` for Workers deploys** (if you don't already have one):
 
 1. Cloudflare dashboard → **My Profile → API Tokens → Create Token**.
 2. Use the **"Edit Cloudflare Workers"** template (or **Create Custom Token** and add
    the six permissions listed under `CF_API_TOKEN` above).
-3. Scope **Account Resources** to your account and **Zone Resources** to `sofybasir.me`.
+3. Scope **Account Resources** to your account and **Zone Resources** to `sbas.dev`.
 4. Create the token, copy it, then store it as a repo secret:
 
    ```sh
