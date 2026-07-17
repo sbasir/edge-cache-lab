@@ -13,31 +13,43 @@ command -v curl >/dev/null 2>&1 || { echo "curl is required"; exit 1; }
 : "${CF_API_TOKEN:?CF_API_TOKEN must be set (see .env.example)}"
 : "${CF_ZONE_ID:?CF_ZONE_ID must be set (see .env.example)}"
 : "${CF_API_RECORD_NAME:?CF_API_RECORD_NAME must be set (see .env.example)}"
+: "${CF_WORKER_RECORD_NAME:?CF_WORKER_RECORD_NAME must be set (see .env.example)}"
 
-printf "Preparing to remove Cloudflare record %s\n" "$CF_API_RECORD_NAME"
+CF_API="https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records"
 
-RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?type=A&name=$CF_API_RECORD_NAME" \
-  -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" | jq -r '.result[0].id // empty')
+# delete_record TYPE NAME
+delete_record() {
+  local type="$1" name="$2"
 
-if [ -z "$RECORD_ID" ]; then
-  echo "No DNS record found for $CF_API_RECORD_NAME"
-  exit 0
-fi
+  local record_id
+  record_id=$(curl -s -X GET "$CF_API?type=$type&name=$name" \
+    -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+    | jq -r '.result[0].id // empty')
 
-if [ "${DRY_RUN:-0}" = "1" ]; then
-  echo "DRY RUN: would delete record id $RECORD_ID"
-  exit 0
-fi
+  if [ -z "$record_id" ]; then
+    echo "No $type record found for $name"
+    return 0
+  fi
 
-result=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
-  -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
+  if [ "${DRY_RUN:-0}" = "1" ]; then
+    echo "DRY RUN: would delete $type record $name (id $record_id)"
+    return 0
+  fi
 
-success=$(echo "$result" | jq -r '.success // false')
-if [ "$success" = "true" ]; then
-  echo "Cloudflare delete successful"
-  exit 0
-else
-  echo "Cloudflare API returned an error:" >&2
-  echo "$result" | jq -r '.errors[]?.message // (.messages // "unknown error")' >&2
-  exit 1
-fi
+  local result
+  result=$(curl -s -X DELETE "$CF_API/$record_id" \
+    -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
+
+  if [ "$(echo "$result" | jq -r '.success // false')" = "true" ]; then
+    echo "Deleted $type record $name"
+  else
+    echo "Cloudflare API returned an error deleting $type $name:" >&2
+    echo "$result" | jq -r '.errors[]?.message // (.messages // "unknown error")' >&2
+    exit 1
+  fi
+}
+
+printf "Preparing to remove Cloudflare records %s, %s\n" "$CF_API_RECORD_NAME" "$CF_WORKER_RECORD_NAME"
+
+delete_record "A" "$CF_API_RECORD_NAME"
+delete_record "AAAA" "$CF_WORKER_RECORD_NAME"
