@@ -25,12 +25,15 @@ command -v curl >/dev/null 2>&1 || { echo "curl is required"; exit 1; }
 
 CF_API="https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records"
 
+# Bound every Cloudflare API call so a stalled connection can't hang the script.
+CURL_OPTS=(--connect-timeout 10 --max-time 30)
+
 # delete_record TYPE NAME
 delete_record() {
   local type="$1" name="$2"
 
   local record_id
-  record_id=$(curl -s -X GET "$CF_API?type=$type&name=$name" \
+  record_id=$(curl -s "${CURL_OPTS[@]}" -X GET "$CF_API?type=$type&name=$name" \
     -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
     | jq -r '.result[0].id // empty')
 
@@ -45,7 +48,7 @@ delete_record() {
   fi
 
   local result
-  result=$(curl -s -X DELETE "$CF_API/$record_id" \
+  result=$(curl -s "${CURL_OPTS[@]}" -X DELETE "$CF_API/$record_id" \
     -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
 
   if [ "$(echo "$result" | jq -r '.success // false')" = "true" ]; then

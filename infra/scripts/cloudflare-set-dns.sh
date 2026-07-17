@@ -34,6 +34,11 @@ fi
 
 CF_API="https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records"
 
+# Bound every Cloudflare API call so a stalled connection can't hang the script.
+# (No --fail-with-body: the callers inspect the JSON body's .success field, and
+# under `set -e` a non-zero curl exit would bypass that error handling.)
+CURL_OPTS=(--connect-timeout 10 --max-time 30)
+
 # upsert_record TYPE NAME CONTENT PROXIED
 # Creates or updates a single DNS record, keyed on TYPE + NAME.
 upsert_record() {
@@ -47,7 +52,7 @@ upsert_record() {
   fi
 
   local record_id
-  record_id=$(curl -s -X GET "$CF_API?type=$type&name=$name" \
+  record_id=$(curl -s "${CURL_OPTS[@]}" -X GET "$CF_API?type=$type&name=$name" \
     -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
     | jq -r '.result[0].id // empty')
 
@@ -70,11 +75,11 @@ upsert_record() {
   local result
   if [ -z "$record_id" ]; then
     echo "Creating $type record $name..."
-    result=$(curl -s -X POST "$CF_API" \
+    result=$(curl -s "${CURL_OPTS[@]}" -X POST "$CF_API" \
       -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" --data "$payload")
   else
     echo "Updating $type record $name (id $record_id)..."
-    result=$(curl -s -X PUT "$CF_API/$record_id" \
+    result=$(curl -s "${CURL_OPTS[@]}" -X PUT "$CF_API/$record_id" \
       -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" --data "$payload")
   fi
 
