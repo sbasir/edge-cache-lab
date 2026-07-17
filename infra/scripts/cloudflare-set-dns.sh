@@ -82,12 +82,15 @@ upsert_record() {
 }
 
 # --- API backend record: api.edge.<domain> -> origin public IP ---------------
+# Depends on the Pulumi stack being up. If it isn't, skip this record (with a
+# warning) rather than aborting -- the Worker-route record below is independent
+# of the origin and must still be manageable before the backend exists.
 PUBLIC_IP=$(pulumi stack output public_ip 2>/dev/null || true)
 if [ -z "$PUBLIC_IP" ]; then
-  echo "No public_ip found in stack outputs. Ensure stack is up." >&2
-  exit 1
+  echo "WARNING: no public_ip in stack outputs (stack not up) -- skipping $CF_API_RECORD_NAME" >&2
+else
+  upsert_record "A" "$CF_API_RECORD_NAME" "$PUBLIC_IP" "$CF_PROXIED"
 fi
-upsert_record "A" "$CF_API_RECORD_NAME" "$PUBLIC_IP" "$CF_PROXIED"
 
 # --- Worker route record: edge.<domain> --------------------------------------
 # The SPA is served by a Cloudflare Worker route (edge.<domain>/*). A route only
