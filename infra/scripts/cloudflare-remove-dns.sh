@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Load local .env if present
-if [ -f .env ]; then
+# Load the repo-root .env regardless of CWD (make targets cd into infra/pulumi
+# first, so a bare `. .env` would miss it).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ -f "$REPO_ROOT/.env" ]; then
   # shellcheck disable=SC1091
-  . .env
+  . "$REPO_ROOT/.env"
 fi
 
 command -v jq >/dev/null 2>&1 || { echo "jq is required. Install: brew install jq"; exit 1; }
