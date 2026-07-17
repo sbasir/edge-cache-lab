@@ -5,9 +5,15 @@ set -euo pipefail
 # first so `pulumi stack output` resolves, so a bare `. .env` would miss it).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Preserve a caller-provided DRY_RUN (e.g. from the `make infra-set-dns` target)
+# so the .env default doesn't clobber it -- an explicit invocation wins.
+_DRY_RUN_CALLER="${DRY_RUN:-}"
 if [ -f "$REPO_ROOT/.env" ]; then
   # shellcheck disable=SC1091
   . "$REPO_ROOT/.env"
+fi
+if [ -n "$_DRY_RUN_CALLER" ]; then
+  DRY_RUN="$_DRY_RUN_CALLER"
 fi
 
 command -v jq >/dev/null 2>&1 || { echo "jq is required. Install: brew install jq"; exit 1; }
