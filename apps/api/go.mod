@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/go-chi/chi/v5 v5.2.5
-	github.com/oapi-codegen/runtime v1.2.0
+	github.com/oapi-codegen/runtime v1.7.0
 	github.com/stretchr/testify v1.11.1
 )
 
