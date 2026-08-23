@@ -1,2 +1,1 @@
-config:
-  edge-cache-lab:ami: ami-0e29686b75fa4b79c
+config: {}
