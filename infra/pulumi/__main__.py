@@ -17,7 +17,7 @@ ami_override = config.get("ami")
 aws_region = aws.config.region or "false"
 
 if not aws_region or aws_region == "false":
-    raise ValueError("AWS region must be configured (e.g. 'me-central-1').")
+    raise ValueError("AWS region must be configured (e.g. 'ap-south-1').")
 
 
 # Build the IAM trust policy that allows EC2 to assume the role.
