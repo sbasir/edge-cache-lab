@@ -1,10 +1,10 @@
 # Base image with Node for building
-FROM node:24-slim AS base
+FROM node:26-slim AS base
 
 ENV PNPM_HOME="/pnpm/store"
 ENV PATH="$PNPM_HOME:$PATH"
 
-RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+RUN npm install -g pnpm@10.28.1
 
 WORKDIR /usr/src/app
 
