@@ -6,7 +6,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "mypy>=2.3.1",
     "pulumi>=3.258.0,<4.0.0",
-    "pulumi-aws>=7.42.0",
+    "pulumi-aws>=7.43.0",
 ]
 
 [tool.mypy]
