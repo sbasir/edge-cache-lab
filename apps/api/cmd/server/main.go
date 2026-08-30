@@ -59,7 +59,6 @@ func NewAPI() *API {
 
 func (s *Server) MountHandlers() {
 	s.Router.Use(middleware.RequestID)
-	s.Router.Use(middleware.RealIP)
 	s.Router.Use(middleware.Recoverer)
 	s.Router.Use(corsMiddleware)
 	s.Router.Use(requestLogger)
