@@ -26,9 +26,12 @@
 	"env": {
 		// Isolated per-PR preview environment on workers.dev (no custom route).
 		// vars are NOT inherited by named environments, so repeat them here.
+		// routes IS inherited, so it must be explicitly cleared: wrangler 4.128+
+		// hard-fails deploy when the CI token lacks permission on the inherited zone.
 		"preview": {
 			"name": "edge-cache-lab-preview",
 			"workers_dev": true,
+			"routes": [],
 			"vars": {
 				"API_ORIGIN": "http://api.edge.sbas.dev"
 			}
