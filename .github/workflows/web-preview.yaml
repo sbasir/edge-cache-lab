@@ -55,6 +55,8 @@ jobs:
 
       - name: Build Vite app
         working-directory: apps/web
+        env:
+          CLOUDFLARE_ENV: preview
         run: pnpm run build
 
       - name: Deploy preview to Cloudflare Workers
