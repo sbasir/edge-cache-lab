@@ -51,14 +51,14 @@ jobs:
         working-directory: apps/web
 
       - name: Dry-run (validate bundle/bindings before shipping)
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        uses: cloudflare/wrangler-action@25853364521e0d392ece9b0c1e97a4b37b638087 # v4.1.2
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           workingDirectory: apps/web
           command: deploy --dry-run
 
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        uses: cloudflare/wrangler-action@25853364521e0d392ece9b0c1e97a4b37b638087 # v4.1.2
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           workingDirectory: apps/web
